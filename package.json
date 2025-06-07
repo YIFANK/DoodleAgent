@@ -1,0 +1,33 @@
+{
+  "name": "doodle-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^14.2.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tldraw": "^2.0.9",
+    "openai": "^4.33.0",
+    "lucide-react": "^0.323.0",
+    "class-variance-authority": "^0.7.0",
+    "tailwind-merge": "^1.14.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.36",
+    "@types/node": "^20.11.24",
+    "typescript": "^5.4.5",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.3",
+    "prettier": "^3.3.1",
+    "tailwindcss": "^3.4.4",
+    "postcss": "^8.4.35",
+    "autoprefixer": "^10.4.17"
+  }
+}
