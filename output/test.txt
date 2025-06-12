@@ -1,0 +1,189 @@
+LLM response: {
+    "shape": "rectangle",
+    "params": {
+        "x": 100,
+        "y": 50,
+        "width": 300,
+        "height": 200
+    },
+    "options": {
+        "stroke": "#34495e",
+        "fill": "#7f8c8d",
+        "fillStyle": "cross-hatch",
+        "strokeWidth": 4,
+        "roughness": 1.5,
+        "bowing": 1
+    },
+    "artistic_reasoning": "The rectangular shape brings out the angular mood we want at this moment. It's the beginning of the composition phase, and simple rectangles can serve as a strong foundation for the structure of the artwork. The selected colors are muted, to set a base tone, upon which brighter colors will stand out as the drawing progresses."
+}
+LLM response: {
+    "shape": "line",
+    "params": {
+        "x1": 200,
+        "y1": 50,
+        "x2": 600,
+        "y2": 550
+    },
+    "options": {
+        "stroke": "#34495e",
+        "strokeWidth": 3,
+        "roughness": 2.0,
+        "bowing": 0.5
+    },
+    "artistic_reasoning": "To keep with the angular mood, a line has been drawn from one corner of the canvas to the opposite corner, symbolizing a shift in perspective. The color chosen is the darkest among the options, representing the beginning of the artwork journey, often associated with mystery and depth. The roughness is increased to 2.0 to maintain the sketch-like quality of the Rough.js, and a slight curve is applied to give the line a sense of motion."
+}
+LLM response: {
+    "shape": "polygon",
+    "params": {
+        "vertices": [[100,200], [200,250], [150,350]]
+    },
+    "options": {
+        "stroke": "#34495e",
+        "fill": "#bdc3c7",
+        "fillStyle": "cross-hatch",
+        "strokeWidth": 2,
+        "roughness": 2.5,
+        "bowing": 1
+    },
+    "artistic_reasoning": "The polygon reflects the angular mood I am in, while the cross-hatch fill style reflects the complexity of the artistic thought process. The darker stroke contrasts with the fill color, adding depth to this creation."
+}
+LLM response: {
+    "shape": "polygon",
+    "params": {
+        "vertices": [[200, 150], [400, 150], [300, 250]]        
+    },
+    "options": {
+        "stroke": "#34495e",
+        "fill": "#7f8c8d",
+        "fillStyle": "cross-hatch",
+        "strokeWidth": 2,
+        "roughness": 1.5,
+        "bowing": 1
+    },
+    "artistic_reasoning": "Given the angular mood, a polygon—specifically a triangle—felt like an apt choice. The vertices are set to create an upward pointing triangle, giving an impression of growth and ascension which aligns with the starting phase of the composition. I've chosen a darker stroke color to starkly outline the shape against the canvas, filled with a lighter tone. The cross-hatch fill style gives it the texture I'm envisioning for this piece. The medium level of roughness adds an edge to the sketch, symbolizing the rawness of beginning stages of any creation."
+}
+LLM response: {
+    "shape": "polygon",
+    "params": {
+        "vertices": [[150, 200], [300, 500], [450, 200]]
+    },
+    "options": {
+        "stroke": "#34495e",
+        "fill": "#7f8c8d",
+        "fillStyle": "hachure",
+        "strokeWidth": 3,
+        "roughness": 2.0,
+        "bowing": 0.8
+    },
+    "artistic_reasoning": "A polygon shape fits well with the angular mood. The angularity of the vertices provides a sense of tension and dynamism. The color choices add to the overall mood of the artwork, with '#34495e' for the stroke providing a deep, profound boundary and '#7f8c8d' for the fill giving a soothing yet edgy fill. The selected 'hachure' fill style, roughness, and bowing attribute to the sketch's overall rough, hand-drawn, and expressive vibe."
+}
+LLM response: {
+    "shape": "polygon",
+    "params": {
+        "vertices": [[100, 150], [200, 250], [300, 200], [250, 100]]
+    },
+    "options": {
+        "stroke": "#34495e",
+        "fill": "#7f8c8d",
+        "fillStyle": "zigzag",
+        "strokeWidth": 2,
+        "roughness": 2.5,
+        "bowing": 1.5
+    },
+    "artistic_reasoning": "In the current angular mood, a polygon with zigzag fill introduces a new facet into the composition while maintaining the angular theme. The dark stroke color adds depth, with the fill bringing balance. The high roughness and bowing add to the angular, edgy feel."
+}
+LLM response: {
+    "shape": "polygon",
+    "params": {
+        "vertices": [[100,100], [200,150], [100,200], [50,150]]
+    },
+    "options": {
+        "stroke": "#34495e",
+        "fill": "#bdc3c7",
+        "fillStyle": "zigzag",
+        "strokeWidth": 2,
+        "roughness": 1.5,
+        "bowing": 1
+    },
+    "artistic_reasoning": "This angular polygon follows the artistic mood and appears as a transformative piece in the composition, bridging the gap between the previous shapes and the ones to come. The zigzag fill style echoes the angular theme and the color palette is consistent with the current composition."
+}
+LLM response: {
+    "shape": "polygon",
+    "params": {
+        "vertices": [[400, 300], [450, 350], [350, 350]]
+    },
+    "options": {
+        "stroke": "#34495e",
+        "fill": "#7f8c8d",
+        "fillStyle": "cross-hatch",
+        "strokeWidth": 2,
+        "roughness": 2.5,
+        "bowing": 1.5
+    },
+    "artistic_reasoning": "A polygon with angular vertices aligns with the current 'angular' mood. The chosen colors are subdued to maintain balance in the composition. The fill style 'cross-hatch' is chosen because it involves crisscrossed lines, which reflects the angular theme. The high roughness value adds to the overall raw and edgy feeling, while the medium bowing value ensures the edges aren't too perfect or smooth. This shape represents the 8th element in the composition, enhancing the complexity and depth of the artwork."
+}
+LLM response: {
+    "shape": "rectangle",
+    "params": {
+        "x": 300,
+        "y": 200,
+        "width": 200,
+        "height": 150
+    },
+    "options": {
+        "stroke": "#34495e",
+        "fill": "#bdc3c7",
+        "fillStyle": "cross-hatch",
+        "strokeWidth": 3,
+        "roughness": 2.5,
+        "bowing": 1
+    },
+    "artistic_reasoning": "This rectangle feels right for the moment as it continues the angular pattern on the canvas. The cross-hatch fill provides a texturous contrast to the existing details. The chosen colors further blends with the current palette, creating coherence. The shape's placement also creates an interesting negative space, guiding the viewer's eye across the composition."
+}
+LLM response: {
+    "shape": "polygon",
+    "params": {
+        "vertices": [[200, 300], [300, 450], [100, 150], [400, 230], [500, 350]]
+    },
+    "options": {
+        "stroke": "#34495e",
+        "fill": "#95a5a6",
+        "fillStyle": "cross-hatch",
+        "strokeWidth": 3,
+        "roughness": 2.5,
+        "bowing": 1
+    },
+    "artistic_reasoning": "The angular mood inspires the choice of a polygon shape, which naturally builds upon the already existent shapes on the canvas. This particular polygon, with its irregular vertices, introduces a dynamic and unpredictable element that challenges the existing composition. The chosen colors and cross-hatch fill style further emphasize this bold, angular direction, representing the artist's current state of mind. The increased roughness of the sketch amplifies the raw, rugged character of the artwork and further enhances the angular mood."
+}
+LLM response: {
+    "shape": "polygon",
+    "params": {
+        "vertices": [[350,200], [400,300], [450,200]]
+    },
+    "options": {
+        "stroke": "#7f8c8d",
+        "fill": "#bdc3c7",
+        "fillStyle": "zigzag",
+        "strokeWidth": 2,
+        "roughness": 2.5,
+        "bowing": 1.5
+    },
+    "artistic_reasoning": "The angular mood calls for a shape with sharp edges. The chosen polygon, a triangle, adds to the complexity and depth of the sketch. The zigzag fill style complements the angular aesthetic, and the cool greys keep the palette consistent, while the increased stroke width, roughness, and bowing heighten the boldness and intensity of the piece."
+}
+LLM response: {
+    "shape": "rectangle",
+    "params": {
+        "x": 350,
+        "y": 250,
+        "width": 100,
+        "height": 200
+    },
+    "options": {
+        "stroke": "#34495e",
+        "fill": "#7f8c8d",
+        "fillStyle": "cross-hatch",
+        "strokeWidth": 2,
+        "roughness": 2.0,
+        "bowing": 1
+    },
+    "artistic_reasoning": "Rectangle aligns with the ongoing angular mood, and the fill style 'cross-hatch' emphasizes the artistic tension between precision and chaos that's been building up in the piece. The chosen colors keep the balance in the overall color scheme."

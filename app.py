@@ -127,10 +127,10 @@ Respond with JSON:
     "artistic_reasoning": "Why this shape feels right now"
 }}"""
 
-    async def _call_llm(self, prompt: str) -> Dict:
+    def _call_llm(self, prompt: str) -> Dict:
         """Get shape decision from LLM"""
         try:
-            response = await openai.ChatCompletion.acreate(
+            response = openai.ChatCompletion.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": "You are a creative artist. Respond only with valid JSON."},
@@ -141,13 +141,12 @@ Respond with JSON:
             )
             
             response_text = response.choices[0].message.content.strip()
-            
+            print(f"LLM response: {response_text}")
             # Clean JSON formatting
             if response_text.startswith('```json'):
                 response_text = response_text[7:-3]
             elif response_text.startswith('```'):
                 response_text = response_text[3:-3]
-                
             return json.loads(response_text)
             
         except Exception as e:
@@ -156,6 +155,7 @@ Respond with JSON:
     
     def _create_fallback_shape(self) -> Dict:
         """Create a simple shape when LLM fails"""
+        print("LLM call failed, using fallback shape")
         shapes = ["rectangle", "circle", "ellipse", "line"]
         shape = random.choice(shapes)
         color = random.choice(self.color_palette)
@@ -267,7 +267,7 @@ Respond with JSON:
         else:
             self.composition_state = "finishing"
     
-    async def create_drawing(self) -> Dict:
+    def create_drawing(self, test_mode=False) -> Dict:
         """Main method to create autonomous sketch"""
         drawing_session = {
             "shapes": [],
@@ -285,9 +285,13 @@ Respond with JSON:
             # Update composition state
             self._update_composition_state()
             
-            # Generate shape prompt and get LLM decision
-            prompt = self._create_shape_prompt()
-            shape_data = await self._call_llm(prompt)
+            if test_mode:
+                # Use fallback shapes for testing without OpenAI
+                shape_data = self._create_fallback_shape()
+            else:
+                # Generate shape prompt and get LLM decision
+                prompt = self._create_shape_prompt()
+                shape_data = self._call_llm(prompt)
             
             # Validate and add shape
             if self._validate_shape(shape_data):
@@ -310,29 +314,62 @@ Respond with JSON:
         return drawing_session
 
 @app.route('/api/generate', methods=['POST'])
-async def generate_drawing():
+def generate_drawing():
     """API endpoint for autonomous drawing generation"""
     try:
         data = request.get_json() or {}
         canvas_width = data.get('canvas_width', 800)
         canvas_height = data.get('canvas_height', 600)
         
+        # Validate OpenAI API key
+        if not openai.api_key or openai.api_key == "your-api-key-here":
+            return jsonify({
+                "success": False,
+                "error": "OpenAI API key not configured",
+                "message": "Please set OPENAI_API_KEY in your .env file"
+            }), 400
+        
+        # Check if we should use test mode (no OpenAI)
+        test_mode = data.get('test_mode', False) or not openai.api_key or openai.api_key == "your-api-key-here"
+        
         # Create and run autonomous agent
         agent = RoughDrawingAgent(canvas_width, canvas_height)
-        drawing_session = await agent.create_drawing()
+        drawing_session = agent.create_drawing(test_mode=test_mode)
+        
+        mode_message = " (test mode - using fallback shapes)" if test_mode else ""
         
         return jsonify({
             "success": True,
             "drawing": drawing_session,
-            "message": f"Created {drawing_session['metadata']['mood']} drawing with {drawing_session['metadata']['total_shapes']} shapes"
+            "message": f"Created {drawing_session['metadata']['mood']} drawing with {drawing_session['metadata']['total_shapes']} shapes{mode_message}"
         })
         
     except Exception as e:
+        # Log the full error for debugging
+        print(f"Error in generate_drawing: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
         return jsonify({
             "success": False,
             "error": str(e),
             "message": "Failed to generate drawing"
         }), 500
+
+@app.route('/api/test', methods=['GET'])
+def test_api():
+    """Simple test endpoint to verify API is working"""
+    return jsonify({
+        "success": True,
+        "message": "API is working",
+        "openai_configured": bool(openai.api_key and openai.api_key != "your-api-key-here"),
+        "config_loaded": bool(app.config.get('OPENAI_API_KEY'))
+    })
+
+@app.route('/favicon.ico')
+def favicon():
+    """Return a simple favicon to avoid 404s"""
+    return '', 204  # No content
 
 @app.route('/', methods=['GET'])
 @app.route('/api/demo', methods=['GET'])
@@ -343,7 +380,8 @@ def demo_page():
 <html>
 <head>
     <title>Autonomous Rough.js Drawing Agent</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/rough.js/4.5.2/rough.min.js"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
+    <script src="https://unpkg.com/roughjs@4.5.2/bundled/rough.js"></script>
     <style>
         body { 
             font-family: Arial, sans-serif; 
@@ -397,6 +435,7 @@ def demo_page():
         <div>
             <button onclick="generateDrawing()">Generate New Drawing</button>
             <button onclick="clearCanvas()">Clear Canvas</button>
+            <button onclick="testAPI()">Test API</button>
         </div>
         
         <div id="status"></div>
@@ -407,8 +446,18 @@ def demo_page():
 
     <script>
         let canvas = document.getElementById('drawingCanvas');
-        let rc = rough.canvas(canvas);
-        let ctx = canvas.getContext('2d');
+        let rc, ctx;
+        
+        // Initialize Rough.js when page loads
+        window.addEventListener('load', function() {
+            if (typeof rough !== 'undefined') {
+                rc = rough.canvas(canvas);
+                ctx = canvas.getContext('2d');
+                showStatus('Ready to draw!', false);
+            } else {
+                showStatus('Error: Rough.js failed to load', true);
+            }
+        });
 
         function showStatus(message, isError = false) {
             const status = document.getElementById('status');
@@ -435,6 +484,11 @@ def demo_page():
         }
 
         function drawShape(shape) {
+            if (!rc) {
+                console.error('Rough.js not initialized');
+                return;
+            }
+            
             const { shape: shapeType, params, options } = shape;
             
             try {
@@ -465,6 +519,11 @@ def demo_page():
         }
 
         async function generateDrawing() {
+            if (!rc) {
+                showStatus('Rough.js not ready yet, please wait...', true);
+                return;
+            }
+            
             showStatus('Generating drawing...', false);
             clearCanvas();
             
@@ -474,9 +533,19 @@ def demo_page():
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         canvas_width: canvas.width,
-                        canvas_height: canvas.height
+                        canvas_height: canvas.height,
+                        test_mode: false  // Set to true to test without OpenAI
                     })
                 });
+                
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text.substring(0, 200));
+                    showStatus('Server error: Expected JSON, got HTML. Check server logs.', true);
+                    return;
+                }
                 
                 const data = await response.json();
                 
@@ -492,14 +561,29 @@ def demo_page():
                     }
                 } else {
                     showStatus('Error: ' + data.message, true);
+                    console.error('API Error:', data);
                 }
             } catch (error) {
+                console.error('Full error:', error);
                 showStatus('Network error: ' + error.message, true);
             }
         }
 
-        // Generate initial drawing
-        generateDrawing();
+        // Add test function
+        async function testAPI() {
+            try {
+                const response = await fetch('/api/test');
+                const data = await response.json();
+                console.log('API Test:', data);
+                showStatus(`API Test: ${data.message} | OpenAI: ${data.openai_configured}`, false);
+            } catch (error) {
+                console.error('Test failed:', error);
+                showStatus('API test failed: ' + error.message, true);
+            }
+        }
+
+        // Don't auto-generate on load, wait for user click or page ready
+        // generateDrawing();
     </script>
 </body>
 </html>
