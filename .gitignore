@@ -58,3 +58,6 @@ htmlcov/
 
 # Jupyter Notebooks
 .ipynb_checkpoints
+
+#image files
+*.png

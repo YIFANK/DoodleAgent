@@ -131,7 +131,7 @@ Respond with JSON:
         """Get shape decision from LLM"""
         try:
             response = openai.ChatCompletion.create(
-                model="gpt-4",
+                model="gpt-4.1-nano",
                 messages=[
                     {"role": "system", "content": "You are a creative artist. Respond only with valid JSON."},
                     {"role": "user", "content": prompt}
