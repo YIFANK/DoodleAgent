@@ -1,0 +1,30 @@
+{
+  "contemplative": {
+    "brush_size_range": [8, 20],
+    "opacity_range": [0.3, 0.7],
+    "flow_range": [0.4, 0.6],
+    "stroke_length_range": [50, 200],
+    "color_palette": ["#2c3e50", "#34495e", "#7f8c8d", "#95a5a6"]
+  },
+  "energetic": {
+    "brush_size_range": [15, 35],
+    "opacity_range": [0.6, 0.9],
+    "flow_range": [0.7, 0.9],
+    "stroke_length_range": [100, 400],
+    "color_palette": ["#e74c3c", "#f39c12", "#e67e22", "#d35400"]
+  },
+  "delicate": {
+    "brush_size_range": [3, 12],
+    "opacity_range": [0.2, 0.5],
+    "flow_range": [0.2, 0.4],
+    "stroke_length_range": [20, 100],
+    "color_palette": ["#f8c291", "#e55039", "#b71540", "#6c5ce7"]
+  },
+  "abstract": {
+    "brush_size_range": [10, 50],
+    "opacity_range": [0.4, 0.8],
+    "flow_range": [0.5, 0.8],
+    "stroke_length_range": [80, 300],
+    "color_palette": ["#8e44ad", "#9b59b6", "#3498db", "#2ecc71"]
+  }
+}

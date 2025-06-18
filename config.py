@@ -6,7 +6,7 @@ load_dotenv()
 
 class Config:
     """Base configuration class"""
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+    ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
     
     # Canvas settings

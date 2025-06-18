@@ -1,0 +1,8 @@
+{
+  "default_width": 800,
+  "default_height": 600,
+  "background_color": "#ffffff",
+  "max_strokes": 50,
+  "stroke_delay_ms": 500,
+  "auto_save_interval": 10
+}

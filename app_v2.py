@@ -7,6 +7,7 @@ import os
 import base64
 from typing import Dict, List, Tuple, Optional
 import openai
+import anthropic
 from config import config
 import datetime
 from PIL import Image
@@ -17,10 +18,11 @@ app = Flask(__name__)
 # Load configuration
 env = os.environ.get('FLASK_ENV', 'development')
 app.config.from_object(config[env])
-
 # Configure OpenAI API key
 openai.api_key = app.config['OPENAI_API_KEY']
-
+client = anthropic.Anthropic(
+                api_key=app.config['ANTHROPIC_API_KEY']  # Set your API key
+            )
 # Create output directories
 OUTPUT_DIR = "illustrations"
 CANVAS_DIR = os.path.join(OUTPUT_DIR, "canvas_states")
@@ -121,26 +123,37 @@ Respond with JSON:
 }}"""
 
     def _call_llm(self, prompt: str, image_data: Optional[str] = None) -> Dict:
-        """Call LLM with optional image context"""
+        """Call Claude LLM with optional image context"""
         try:
-            content = prompt
+            # Prepare the message content
+            content = []
+            content.append({"type": "text", "text": prompt})
+            
             if image_data:
-                content = [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_data}"}}
-                ]
+                # Claude expects image data in a specific format
+                content.append({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/png",  # Adjust media type as needed
+                        "data": image_data
+                    }
+                })
 
-            response = openai.ChatCompletion.create(
-                model="gpt-4.1-mini",
-                messages=[
-                    {"role": "system", "content": "You are a creative artist. Respond only with valid JSON."},
-                    {"role": "user", "content": content}
-                ],
+            response = client.messages.create(
+                model="claude-3-5-haiku-20241022",  # or claude-3-opus-20240229, claude-3-haiku-20240307
+                max_tokens=500,
                 temperature=0.9,
-                max_tokens=500
+                system="You are a creative artist. Respond only with valid JSON.",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": content
+                    }
+                ]
             )
 
-            response_text = response.choices[0].message.content.strip()
+            response_text = response.content[0].text.strip()
 
             # Clean JSON formatting
             if response_text.startswith('```json'):
@@ -151,7 +164,7 @@ Respond with JSON:
             return json.loads(response_text)
 
         except Exception as e:
-            print(f"LLM error: {e}")
+            print(f"Claude LLM error: {e}")
             return self._create_fallback_shape()
 
     def _create_fallback_shape(self) -> Dict:
@@ -483,6 +496,7 @@ def test_api():
         "success": True,
         "message": "API is working",
         "openai_configured": bool(openai.api_key and openai.api_key != "your-api-key-here"),
+        "anthropic_configured": bool(anthropic.api_key and anthropic.api_key != "your-api-key-here"),
         "output_dirs_exist": {
             "illustrations": os.path.exists(OUTPUT_DIR),
             "canvas_states": os.path.exists(CANVAS_DIR)
@@ -815,7 +829,7 @@ def demo_page():
             try {
                 const response = await fetch('/api/test');
                 const data = await response.json();
-                showStatus(`API Test: ${data.message} | OpenAI: ${data.openai_configured}`, false);
+                showStatus(`API Test: ${data.message} | Anthropic: ${data.anthropic_configured}`, false);
             } catch (error) {
                 showStatus('API test failed: ' + error.message, true);
             }
