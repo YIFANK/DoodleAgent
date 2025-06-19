@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crayon Texture Brush</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #2c1810, #4a3728);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .controls {
+            padding: 15px;
+            background: rgba(139, 69, 19, 0.9);
+            backdrop-filter: blur(10px);
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .control-group label {
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        input[type="range"] {
+            width: 100px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #d2691e;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(210, 105, 30, 0.5);
+        }
+
+        input[type="color"] {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 20%;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        button {
+            background: linear-gradient(45deg, #d2691e, #cd853f);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(210, 105, 30, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(210, 105, 30, 0.4);
+        }
+
+        #canvas {
+            background: #ffffff;
+            cursor: crosshair;
+            flex: 1;
+        }
+
+        .value-display {
+            color: #d2691e;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .crayon-info {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-style: italic;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="control-group">
+            <label>Brush Size</label>
+            <input type="range" id="brushSize" min="5" max="50" value="20">
+            <span class="value-display" id="brushSizeValue">20</span>
+        </div>
+        <div class="control-group">
+            <label>Pressure</label>
+            <input type="range" id="pressure" min="0.1" max="2" step="0.1" value="1.0">
+            <span class="value-display" id="pressureValue">1.0</span>
+            <div class="crayon-info">Wax density</div>
+        </div>
+        <div class="control-group">
+            <label>Texture Strength</label>
+            <input type="range" id="textureStrength" min="5" max="30" value="15">
+            <span class="value-display" id="textureStrengthValue">15</span>
+        </div>
+        <div class="control-group">
+            <label>Grain Size</label>
+            <input type="range" id="grainSize" min="0.1" max="2" step="0.1" value="1.0">
+            <span class="value-display" id="grainSizeValue">1.0</span>
+        </div>
+        <div class="control-group">
+            <label>Paper Roughness</label>
+            <input type="range" id="paperRoughness" min="0" max="10" value="4">
+            <span class="value-display" id="paperRoughnessValue">4</span>
+            <div class="crayon-info">Surface texture</div>
+        </div>
+        <div class="control-group">
+            <label>Color</label>
+            <input type="color" id="brushColor" value="#d2691e">
+        </div>
+        <button id="clearCanvas">New Paper</button>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Create texture layer for paper grain
+        const textureLayer = document.createElement('canvas');
+        const textureCtx = textureLayer.getContext('2d');
+        
+        // Set canvas size
+        function resizeCanvas() {
+            const controlsHeight = document.querySelector('.controls').offsetHeight;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight - controlsHeight;
+            textureLayer.width = canvas.width;
+            textureLayer.height = canvas.height;
+            generatePaperTexture();
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Crayon settings
+        let brushSize = 20;
+        let pressure = 1.0;
+        let textureStrength = 15;
+        let grainSize = 1.0;
+        let paperRoughness = 4;
+        let brushColor = '#d2691e';
+        
+        // Crayon particles - more solid, less flowing
+        let waxParticles = [];
+        let paperGrain = [];
+        let isDrawing = false;
+        let mouseX = 0;
+        let mouseY = 0;
+        let prevMouseX = 0;
+        let prevMouseY = 0;
+
+        // Generate paper texture
+        function generatePaperTexture() {
+            // Keep texture generation for potential future use, but don't apply it to canvas
+            textureCtx.clearRect(0, 0, textureLayer.width, textureLayer.height);
+        }
+
+        // Convert hex to RGB
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        class WaxParticle {
+            constructor(x, y, color, size) {
+                this.x = x;
+                this.y = y;
+                this.originalX = x;
+                this.originalY = y;
+                this.size = size;
+                this.color = color;
+                this.opacity = 0.6 + Math.random() * 0.4;
+                this.settled = false;
+                this.life = 1.0;
+                this.decay = 0.002; // Very slow decay for waxy buildup
+                this.displacement = {
+                    x: (Math.random() - 0.5) * grainSize,
+                    y: (Math.random() - 0.5) * grainSize
+                };
+                this.paperSkip = Math.random() < (paperRoughness * 0.15 + 0.3); // More gaps due to paper texture
+            }
+
+            update() {
+                if (!this.settled) {
+                    // Minimal movement - crayons don't flow much
+                    this.x += this.displacement.x * 0.1;
+                    this.y += this.displacement.y * 0.1;
+                    this.displacement.x *= 0.9;
+                    this.displacement.y *= 0.9;
+                    
+                    if (Math.abs(this.displacement.x) < 0.1 && Math.abs(this.displacement.y) < 0.1) {
+                        this.settled = true;
+                    }
+                }
+                
+                this.life -= this.decay;
+                return this.life > 0;
+            }
+
+            draw() {
+                if (this.paperSkip) return; // Paper texture effect
+                
+                const rgb = hexToRgb(this.color);
+                if (!rgb) return;
+
+                ctx.save();
+                ctx.globalAlpha = this.opacity * this.life;
+                
+                // Waxy, solid appearance
+                ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8)`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Add slight texture variation
+                if (Math.random() < 0.3) {
+                    ctx.globalAlpha = this.opacity * 0.3;
+                    ctx.fillStyle = `rgba(${Math.max(0, rgb.r - 20)}, ${Math.max(0, rgb.g - 20)}, ${Math.max(0, rgb.b - 20)}, 0.5)`;
+                    ctx.beginPath();
+                    ctx.arc(this.x + Math.random() * 2 - 1, this.y + Math.random() * 2 - 1, this.size * 0.7, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        function createCrayonStroke(x, y) {
+            // Create patchy crayon marks with gaps
+            const rgb = hexToRgb(brushColor);
+            if (rgb) {
+                // Create multiple small patches instead of one solid circle
+                const patchCount = Math.floor(brushSize * 0.8);
+                
+                for (let i = 0; i < patchCount; i++) {
+                    // Skip random patches to create gaps
+                    if (Math.random() < 0.4 + (paperRoughness * 0.05)) continue;
+                    
+                    const angle = (Math.PI * 2 * i) / patchCount;
+                    const radius = Math.random() * brushSize * 0.8;
+                    const patchX = x + Math.cos(angle) * radius;
+                    const patchY = y + Math.sin(angle) * radius;
+                    const patchSize = (Math.random() * 3 + 1) * pressure;
+                    
+                    ctx.save();
+                    ctx.globalAlpha = (pressure * 0.6) + (Math.random() * 0.3);
+                    ctx.fillStyle = brushColor;
+                    ctx.beginPath();
+                    ctx.arc(patchX, patchY, patchSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+                
+                // Add some random texture dots
+                for (let i = 0; i < textureStrength; i++) {
+                    if (Math.random() < 0.6) continue; // Skip many for gaps
+                    
+                    const dotX = x + (Math.random() - 0.5) * brushSize * 1.2;
+                    const dotY = y + (Math.random() - 0.5) * brushSize * 1.2;
+                    const dotSize = Math.random() * 2 * pressure;
+                    
+                    ctx.save();
+                    ctx.globalAlpha = Math.random() * 0.5 * pressure;
+                    ctx.fillStyle = brushColor;
+                    ctx.beginPath();
+                    ctx.arc(dotX, dotY, dotSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            // Create wax particles for texture
+            const particleCount = Math.floor(textureStrength * pressure * 0.8);
+            for (let i = 0; i < particleCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * brushSize * 0.8;
+                const px = x + Math.cos(angle) * radius;
+                const py = y + Math.sin(angle) * radius;
+                const particleSize = (Math.random() * grainSize + 0.5) * pressure;
+                waxParticles.push(new WaxParticle(px, py, brushColor, particleSize));
+            }
+
+            // Create stroke connection with gaps for smoother lines
+            if (isDrawing) {
+                // Create patchy connecting line
+                const distance = Math.sqrt((mouseX - prevMouseX) ** 2 + (mouseY - prevMouseY) ** 2);
+                const segmentCount = Math.floor(distance / 3);
+                
+                for (let i = 0; i < segmentCount; i++) {
+                    // Skip segments randomly to create gaps
+                    if (Math.random() < 0.3 + (paperRoughness * 0.03)) continue;
+                    
+                    const t = i / segmentCount;
+                    const lineX = prevMouseX + (x - prevMouseX) * t;
+                    const lineY = prevMouseY + (y - prevMouseY) * t;
+                    
+                    ctx.save();
+                    ctx.globalAlpha = pressure * 0.4 * Math.random();
+                    ctx.fillStyle = brushColor;
+                    ctx.beginPath();
+                    ctx.arc(lineX + (Math.random() - 0.5) * 2, lineY + (Math.random() - 0.5) * 2, 
+                           Math.random() * 3 + 1, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+        }
+
+        function animate() {
+            // Don't clear the canvas - crayons leave permanent marks
+            // Just update and draw new particles
+            
+            waxParticles = waxParticles.filter(particle => {
+                if (particle.update()) {
+                    particle.draw();
+                    return true;
+                }
+                return false;
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // Mouse events
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            prevMouseX = mouseX;
+            prevMouseY = mouseY;
+            createCrayonStroke(mouseX, mouseY);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            prevMouseX = mouseX;
+            prevMouseY = mouseY;
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            
+            if (isDrawing) {
+                // Create continuous stroke with less interpolation (more chunky)
+                const distance = Math.sqrt((mouseX - prevMouseX) ** 2 + (mouseY - prevMouseY) ** 2);
+                const steps = Math.max(1, Math.floor(distance / 8)); // Larger steps for more textured stroke
+                
+                for (let i = 0; i < steps; i++) {
+                    const t = i / steps;
+                    const x = prevMouseX + (mouseX - prevMouseX) * t;
+                    const y = prevMouseY + (mouseY - prevMouseY) * t;
+                    createCrayonStroke(x, y);
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDrawing = false;
+        });
+
+        // Touch events
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            isDrawing = true;
+            mouseX = touch.clientX - rect.left;
+            mouseY = touch.clientY - rect.top;
+            prevMouseX = mouseX;
+            prevMouseY = mouseY;
+            createCrayonStroke(mouseX, mouseY);
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            prevMouseX = mouseX;
+            prevMouseY = mouseY;
+            mouseX = touch.clientX - rect.left;
+            mouseY = touch.clientY - rect.top;
+            
+            if (isDrawing) {
+                const distance = Math.sqrt((mouseX - prevMouseX) ** 2 + (mouseY - prevMouseY) ** 2);
+                const steps = Math.max(1, Math.floor(distance / 8));
+                
+                for (let i = 0; i < steps; i++) {
+                    const t = i / steps;
+                    const x = prevMouseX + (mouseX - prevMouseX) * t;
+                    const y = prevMouseY + (mouseY - prevMouseY) * t;
+                    createCrayonStroke(x, y);
+                }
+            }
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            isDrawing = false;
+        });
+
+        // Control updates
+        document.getElementById('brushSize').addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            document.getElementById('brushSizeValue').textContent = brushSize;
+        });
+
+        document.getElementById('pressure').addEventListener('input', (e) => {
+            pressure = parseFloat(e.target.value);
+            document.getElementById('pressureValue').textContent = pressure.toFixed(1);
+        });
+
+        document.getElementById('textureStrength').addEventListener('input', (e) => {
+            textureStrength = parseInt(e.target.value);
+            document.getElementById('textureStrengthValue').textContent = textureStrength;
+        });
+
+        document.getElementById('grainSize').addEventListener('input', (e) => {
+            grainSize = parseFloat(e.target.value);
+            document.getElementById('grainSizeValue').textContent = grainSize.toFixed(1);
+        });
+
+        document.getElementById('paperRoughness').addEventListener('input', (e) => {
+            paperRoughness = parseInt(e.target.value);
+            document.getElementById('paperRoughnessValue').textContent = paperRoughness;
+            generatePaperTexture(); // Regenerate texture when roughness changes
+        });
+
+        document.getElementById('brushColor').addEventListener('input', (e) => {
+            brushColor = e.target.value;
+        });
+
+        document.getElementById('clearCanvas').addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            waxParticles = [];
+            generatePaperTexture();
+        });
+
+        // Initialize
+        generatePaperTexture();
+        animate();
+    </script>
+</body>
+</html>

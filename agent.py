@@ -310,7 +310,7 @@ Respond with a JSON action that either EXPERIMENTS with new parameter combinatio
         
         return random.choice(experimental_actions)
 
-    async def handle_client(self, websocket, path):
+    async def handle_client(self, websocket):
         """Handle WebSocket connection from the frontend"""
         print(f"🌐 Client connected from {websocket.remote_address}")
         
