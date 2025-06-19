@@ -64,7 +64,7 @@ class RoughDrawingAgent:
     {
         "mood": "your_chosen_word"
     }"""
-    
+
     def _create_palette_prompt(self) -> str:
         """Generate prompt for LLM to choose color palette"""
         return f"""You are an autonomous artist creating a {self.current_mood} sketch.
@@ -281,7 +281,7 @@ Respond with JSON:
         session_data = {
             "session_id": self.session_id,
             "mood": self.current_mood,
-            "palette_data": palette_data,
+            "palette": palette_data,
             "canvas_size": {"width": self.canvas_width, "height": self.canvas_height},
             "max_shapes": self.max_shapes,
             "initialized_at": datetime.datetime.now().isoformat()
@@ -617,7 +617,7 @@ def demo_page():
             const info = document.getElementById('sessionInfo');
             info.innerHTML = `
                 <strong>Mood:</strong> ${session.mood}<br>
-                <strong>Palette:</strong> ${session.palette ? session.palette.join(', ') : 'Loading...'}<br>
+                <strong>Palette:</strong> ${session.palette ? session.palette : 'Loading...'}<br>
                 <strong>Canvas:</strong> ${session.canvas_size ? session.canvas_size.width + 'x' + session.canvas_size.height : 'Unknown'}
             `;
         }
