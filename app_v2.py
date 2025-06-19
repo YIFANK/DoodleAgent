@@ -265,7 +265,8 @@ Respond with JSON:
             self.current_mood = random.choice(["geometric", "organic", "expressive", "minimal"])
         else:
             mood_response = self._call_llm(self._create_mood_prompt())
-            self.current_mood = mood_response if isinstance(mood_response, str) else "expressive"
+            mood = list(mood_response.values())[0]
+            self.current_mood = mood
 
         # Choose palette
         palette_data = self._choose_palette(test_mode)
@@ -273,7 +274,7 @@ Respond with JSON:
         session_data = {
             "session_id": self.session_id,
             "mood": self.current_mood,
-            "palette_data": palette_data,
+            "palette": palette_data,
             "canvas_size": {"width": self.canvas_width, "height": self.canvas_height},
             "max_shapes": self.max_shapes,
             "initialized_at": datetime.datetime.now().isoformat()
@@ -610,7 +611,7 @@ def demo_page():
             const info = document.getElementById('sessionInfo');
             info.innerHTML = `
                 <strong>Mood:</strong> ${session.mood}<br>
-                <strong>Palette:</strong> ${session.palette ? session.palette.join(', ') : 'Loading...'}<br>
+                <strong>Palette:</strong> ${session.palette ? session.palette : 'Loading...'}<br>
                 <strong>Canvas:</strong> ${session.canvas_size ? session.canvas_size.width + 'x' + session.canvas_size.height : 'Unknown'}
             `;
         }
