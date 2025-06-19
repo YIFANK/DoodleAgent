@@ -239,6 +239,7 @@
         </div>
 
         <button id="clearCanvas">Clear Canvas</button>
+        <button id="saveCanvas">Save Canvas</button>
     </div>
 
     <div class="brush-info" id="brushInfo">
@@ -500,6 +501,7 @@
                 this.spread = 0;
                 this.maxSpread = param1 * 20;
                 this.absorbed = false;
+                this.permanentMarks = [];
             }
 
             update() {
@@ -517,6 +519,11 @@
                 this.life -= this.evaporation;
                 this.opacity *= 0.998;
 
+                // Create permanent bleeding marks as the droplet moves
+                if (this.spread > 2 && !this.absorbed) {
+                    this.createPermanentMark();
+                }
+
                 if (this.spread > this.maxSpread * 0.7 && !this.absorbed) {
                     this.absorbIntoPaper();
                     this.absorbed = true;
@@ -524,13 +531,29 @@
                 return this.life > 0 && this.opacity > 0.01;
             }
 
+            createPermanentMark() {
+                const rgb = hexToRgb(this.color);
+                if (rgb && dryLayer.width > 0 && dryLayer.height > 0) {
+                    dryCtx.save();
+                    dryCtx.globalAlpha = this.opacity * 0.4;
+                    const gradient = dryCtx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+                    gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)`);
+                    gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+                    dryCtx.fillStyle = gradient;
+                    dryCtx.beginPath();
+                    dryCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    dryCtx.fill();
+                    dryCtx.restore();
+                }
+            }
+
             absorbIntoPaper() {
                 const rgb = hexToRgb(this.color);
-                if (rgb) {
+                if (rgb && dryLayer.width > 0 && dryLayer.height > 0) {
                     dryCtx.save();
-                    dryCtx.globalAlpha = this.opacity * 0.6;
+                    dryCtx.globalAlpha = this.opacity * 0.8;
                     const gradient = dryCtx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
-                    gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)`);
+                    gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`);
                     gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
                     dryCtx.fillStyle = gradient;
                     dryCtx.beginPath();
@@ -567,7 +590,7 @@
                 this.life = 1.0;
                 this.decay = 0.002;
                 this.displacement = { x: (Math.random() - 0.5) * param3, y: (Math.random() - 0.5) * param3 };
-                this.paperSkip = Math.random() < (param4 * 0.15 + 0.3);
+                this.paperSkip = Math.random() < (param4 * 0.01);
             }
 
             update() {
@@ -769,16 +792,17 @@
         }
 
         function animate() {
-            // Only clear temporary effects, not permanent marks
-            // Clear wet layer for watercolor effects
-            if (currentBrush === 'watercolor') {
-                wetCtx.clearRect(0, 0, wetLayer.width, wetLayer.height);
-            }
-            
-            // Draw permanent dry layer first (for watercolor and oil paint permanent marks)
+            // Clear main canvas for temporary effects
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw permanent dry layer first (all permanent marks)
             if (dryLayer.width > 0 && dryLayer.height > 0) {
                 ctx.drawImage(dryLayer, 0, 0);
+            }
+            
+            // Clear wet layer only for watercolor temporary effects
+            if (currentBrush === 'watercolor') {
+                wetCtx.clearRect(0, 0, wetLayer.width, wetLayer.height);
             }
             
             // Update and draw all particle types (these are temporary effects)
@@ -787,7 +811,7 @@
             waxParticles = waxParticles.filter(w => w.update() ? (w.draw(), true) : false);
             paintGlobs = paintGlobs.filter(g => g.update() ? (g.draw(), true) : false);
             
-            // Draw wet layer on top for watercolor
+            // Draw wet layer on top for watercolor temporary effects
             if (currentBrush === 'watercolor' && wetLayer.width > 0 && wetLayer.height > 0) {
                 ctx.drawImage(wetLayer, 0, 0);
             }
@@ -938,6 +962,36 @@
             waxParticles = [];
             paintGlobs = [];
             strokeHistory = [];
+        });
+
+        document.getElementById('saveCanvas').addEventListener('click', () => {
+            // Create a temporary canvas to combine all layers
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            
+            // Fill with white background
+            tempCtx.fillStyle = '#ffffff';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Draw the dry layer (permanent marks)
+            if (dryLayer.width > 0 && dryLayer.height > 0) {
+                tempCtx.drawImage(dryLayer, 0, 0);
+            }
+            
+            // Draw the main canvas (current temporary effects)
+            tempCtx.drawImage(canvas, 0, 0);
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.download = `painting_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+            link.href = tempCanvas.toDataURL('image/png');
+            
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         });
 
         // Initialize with flowing brush

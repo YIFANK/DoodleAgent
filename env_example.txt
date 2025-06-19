@@ -1,0 +1,4 @@
+# Copy this file to .env and replace with your actual API key
+# Anthropic API Key for Claude
+# Get your API key from: https://console.anthropic.com/
+ANTHROPIC_API_KEY=your-api-key-here 
