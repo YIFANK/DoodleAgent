@@ -1,0 +1,20 @@
+I'll add a playful butterfly design that complements the existing organic, colorful bubbles using the rainbow brush to match the whimsical nature of the scene.
+
+{
+  "brush": "rainbow",
+  "strokes": [
+    {
+      "x": [300, 400, 500, 600, 500, 400, 300],
+      "y": [200, 150, 200, 150, 100, 150, 200],
+      "t": [4, 4, 4, 4, 4, 4],
+      "description": "butterfly wing left"
+    },
+    {
+      "x": [300, 400, 500, 600, 500, 400, 300],
+      "y": [200, 250, 200, 250, 300, 250, 200],
+      "t": [4, 4, 4, 4, 4, 4],
+      "description": "butterfly wing right"
+    }
+  ],
+  "reasoning": "Added a symmetric butterfly using rainbow brush to harmonize with existing bubble patterns. Slow timing (t=4) creates smooth, flowing wing curves. Positioned centrally (300-600px) to interact with bubble clusters."
+}

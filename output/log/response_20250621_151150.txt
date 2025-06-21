@@ -1,0 +1,16 @@
+I'll enhance this cosmic rainbow arc with an ethereal spray effect that will add depth and movement to the composition. Here's a design that will create a sweeping celestial trail:
+
+{
+"brush": "spray",
+"strokes": [
+{
+"x": [100, 300, 425, 650, 800],
+"y": [400, 250, 200, 250, 400],
+"t": [4, 3, 4, 3],
+"description": "stardust trail"
+}
+],
+"reasoning": "Ethereal spray arc follows existing rainbow curve, creating cosmic depth with slow timing. Particle effects echo existing dots while adding atmospheric glow"
+}
+
+The slow timing values (3-4) will allow the spray particles to build up gradually, creating a misty, ethereal quality that complements the existing colorful spheres. The arc follows the natural curve already established but at a slight offset, enhancing the sense of dimensional depth and celestial movement. The spray brush's particle effect naturally harmonizes with the dotted texture present in the original image.

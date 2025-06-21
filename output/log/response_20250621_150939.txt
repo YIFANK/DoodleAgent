@@ -1,0 +1,14 @@
+I'll add an ethereal spray of particles that follows and enhances the rainbow arc, creating a sense of magical stardust trailing the colored spheres.
+
+{
+    "brush": "spray",
+    "strokes": [
+        {
+            "x": [50, 425, 800],
+            "y": [400, 100, 400],
+            "t": [4, 4],
+            "description": "cosmic stardust"
+        }
+    ],
+    "reasoning": "Delicate spray particles dance along rainbow trajectory, creating ethereal depth and mystery. Slow timing builds gossamer layers of astral energy."
+}

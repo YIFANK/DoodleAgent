@@ -1,0 +1,14 @@
+I notice there are some colorful, flowing curves that look like they were made with the rainbow brush. I'll add to this playful pattern with another complementary rainbow curve!
+
+{
+  "brush": "rainbow",
+  "strokes": [
+    {
+      "x": [650, 680, 720, 760, 800, 830],
+      "y": [300, 280, 270, 290, 320, 340],
+      "t": [4, 4, 4, 4, 4],
+      "description": "flowing rainbow curve"
+    }
+  ],
+  "reasoning": "Adding another gentle curved rainbow line to complement the existing flowing patterns, using slow speed for smooth color transitions"
+}

@@ -1,0 +1,14 @@
+I see a blank white canvas - perfect for creating something fun! Let's draw a playful cloud using the wiggle brush to give it that perfect fluffy, bouncy feeling.
+
+{
+  "brush": "wiggle",
+  "strokes": [
+    {
+      "x": [200, 300, 400, 500, 600, 650],
+      "y": [200, 150, 150, 150, 180, 200],
+      "t": [4, 4, 4, 4, 4],
+      "description": "Drawing a fluffy cloud with wavy lines"
+    }
+  ],
+  "reasoning": "The wiggle brush is perfect for creating soft, organic cloud shapes with its playful wavy movement. Using slow speeds for smooth, flowing curves."
+}

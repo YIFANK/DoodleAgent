@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import time
 import os
 from dotenv import load_dotenv
+import random
 
 # Load environment variables from .env file
 load_dotenv()
@@ -32,11 +33,26 @@ class DrawingAgent:
         # Initialize conversation memory
         self.messages = []
         self.system_sent = False
+        self.brush_history = []  # Track last few brushes used
     
     def encode_image(self, image_path: str) -> str:
         """Encode image to base64 for API transmission"""
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode('utf-8')
+    
+    def _get_image_media_type(self, image_path: str) -> str:
+        """Determine the correct media type based on file extension"""
+        _, ext = os.path.splitext(image_path.lower())
+        
+        media_type_map = {
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp'
+        }
+        
+        return media_type_map.get(ext, 'image/png')  # Default to PNG if unknown
     
     def analyze_and_plan(self, text_prompt: str, canvas_image_path: str) -> DrawingAction:
         """
@@ -53,7 +69,7 @@ class DrawingAgent:
         # Encode the canvas image
         image_data = self.encode_image(canvas_image_path)
         
-        # Prepare the user message
+        # Prepare the user message (no conversation history)
         user_message = {
             "role": "user",
             "content": [
@@ -65,36 +81,174 @@ class DrawingAgent:
                     "type": "image",
                     "source": {
                         "type": "base64",
-                        "media_type": "image/png",
+                        "media_type": self._get_image_media_type(canvas_image_path),
                         "data": image_data
                     }
                 }
             ]
         }
         
-        # Add to conversation history
-        self.messages.append(user_message)
+        # Send only the current message (no conversation history)
+        messages = [user_message]
         
         system_prompt = [{"type": "text", "text": self._get_system_prompt()}]
         try:
-            # print(self.messages)
             # Create the response using Anthropic client
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=1000,
-                messages=self.messages,
+                messages=messages,
                 system=system_prompt
             )
             
             # Extract the response content
             content = response.content[0].text
             
-            # Add assistant response to conversation history
-            assistant_message = {
-                "role": "assistant",
-                "content": [{"type": "text", "text": content}]
-            }
-            self.messages.append(assistant_message)
+            # Parse the JSON response - try multiple approaches
+            action_data = None
+            
+            # Method 1: Look for JSON block in the response
+            start_idx = content.find('{')
+            end_idx = content.rfind('}') + 1
+            
+            if start_idx != -1 and end_idx != -1:
+                json_str = content[start_idx:end_idx]
+                try:
+                    action_data = json.loads(json_str)
+                except json.JSONDecodeError as json_error:
+                    print(f"JSON parsing error: {json_error}")
+                    print(f"Attempted to parse: {json_str}")
+                    
+                    # Method 2: Try to fix common JSON issues
+                    try:
+                        # Remove any trailing commas or extra characters
+                        json_str = json_str.rstrip(', \n\r\t')
+                        if not json_str.endswith('}'):
+                            json_str += '}'
+                        action_data = json.loads(json_str)
+                    except:
+                        print("Failed to fix JSON, trying alternative parsing...")
+            
+            # Method 3: Try to extract JSON from markdown code blocks
+            if action_data is None:
+                import re
+                json_pattern = r'```(?:json)?\s*(\{.*?\})\s*```'
+                matches = re.findall(json_pattern, content, re.DOTALL)
+                if matches:
+                    try:
+                        action_data = json.loads(matches[0])
+                    except:
+                        print("Failed to parse JSON from code blocks")
+            
+            # Method 4: Extract essential information from complex responses
+            if action_data is None or not self._validate_action_data(action_data):
+                print(action_data)
+                action_data = self._extract_from_complex_response(content)
+            
+            # If we still don't have valid data, create a default action
+            if action_data is None:
+                print(f"Could not parse JSON from response: {content}")
+                action_data = {
+                    "brush": "flowing",
+                    "color": "#ff6b6b",
+                    "strokes": [],
+                    "reasoning": "Default action due to parsing failure"
+                }
+            
+            # Validate required fields
+            required_fields = ["brush", "color", "strokes"]
+            missing_fields = [field for field in required_fields if field not in action_data]
+            
+            if missing_fields:
+                print(f"Warning: Missing required fields in API response: {missing_fields}")
+                print(f"Full response: {content}")
+                # Fill in missing fields with defaults
+                action_data = {
+                    "brush": action_data.get("brush", "flowing"),
+                    "color": action_data.get("color", "#ff6b6b"),
+                    "strokes": action_data.get("strokes", []),
+                    "reasoning": action_data.get("reasoning", "Default action due to missing fields")
+                }
+            
+            return DrawingAction(
+                brush=self._validate_brush_type(action_data["brush"]),
+                color=action_data["color"],
+                strokes=self._enhance_strokes(action_data["strokes"]),
+                reasoning=action_data.get("reasoning", "")
+            )
+                
+        except Exception as e:
+            print(f"Error calling Claude API: {e}")
+            print(f"Full error details: {str(e)}")
+            # Return a default action
+            return DrawingAction(
+                brush="flowing",
+                color="#ff6b6b",
+                strokes=[],
+                reasoning="Default action due to API error"
+            )
+
+    def analyze_and_plan_with_target(self, text_prompt: str, canvas_image_path: str, target_image_path: str) -> DrawingAction:
+        """
+        Analyze the text prompt, current canvas, and target image to generate a drawing action.
+        This method is specifically designed for imitation tasks where the agent needs to
+        compare its current work with a target image.
+        
+        Args:
+            text_prompt: User's description of what to draw
+            canvas_image_path: Path to current canvas image
+            target_image_path: Path to target image to imitate
+            
+        Returns:
+            DrawingAction object with specific drawing instructions
+        """
+        
+        # Encode both images
+        canvas_image_data = self.encode_image(canvas_image_path)
+        target_image_data = self.encode_image(target_image_path)
+        
+        # Prepare the user message with both images (no conversation history)
+        user_message = {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": f"Text Prompt: {text_prompt}\n\nPlease analyze this prompt, the target image (what you're trying to imitate), and your current canvas image, then provide a drawing action in JSON format."
+                },
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": self._get_image_media_type(target_image_path),
+                        "data": target_image_data
+                    }
+                },
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": self._get_image_media_type(canvas_image_path),
+                        "data": canvas_image_data
+                    }
+                }
+            ]
+        }
+        
+        # Send only the current message (no conversation history)
+        messages = [user_message]
+        
+        system_prompt = [{"type": "text", "text": self._get_system_prompt()}]
+        try:
+            # Create the response using Anthropic client
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=1000,
+                messages=messages,
+                system=system_prompt
+            )
+            
+            # Extract the response content
+            content = response.content[0].text
             
             # Parse the JSON response - try multiple approaches
             action_data = None
@@ -195,7 +349,7 @@ class DrawingAgent:
                 "properties": {
                     "brush": {
                         "type": "string",
-                        "enum": ["flowing", "watercolor", "crayon", "oil"],
+                        "enum": ["flowing", "watercolor", "crayon", "oil", "pen", "marker", "rainbow", "wiggle", "spray", "fountain", "splatter", "toothpick"],
                         "description": "The brush type to use for drawing"
                     },
                     "color": {
@@ -213,14 +367,14 @@ class DrawingAgent:
                                     "items": {"type": "integer"},
                                     "minItems": 3,
                                     "maxItems": 8,
-                                    "description": "X coordinates for stroke points (50-750px)"
+                                    "description": "X coordinates for stroke points (0-1000px)"
                                 },
                                 "y": {
                                     "type": "array",
                                     "items": {"type": "integer"},
                                     "minItems": 3,
                                     "maxItems": 8,
-                                    "description": "Y coordinates for stroke points (50-550px)"
+                                    "description": "Y coordinates for stroke points (0-550px)"
                                 },
                                 "description": {
                                     "type": "string",
@@ -265,6 +419,46 @@ class DrawingAgent:
         
         return None
     
+    def _extract_from_complex_response(self, content: str) -> Optional[dict]:
+        """Extract drawing action information from complex text responses"""
+        try:
+            import re
+            
+            # Try to extract brush type
+            brush_match = re.search(r'brush["\s]*:?["\s]*([a-zA-Z]+)', content, re.IGNORECASE)
+            brush = brush_match.group(1).lower() if brush_match else "flowing"
+            
+            # Try to extract color
+            color_match = re.search(r'#[0-9A-Fa-f]{6}', content)
+            color = color_match.group(0) if color_match else "#ff6b6b"
+            
+            # Try to extract coordinates
+            coord_pattern = r'[\["]?(\d+)[\]"]?,?\s*[\["]?(\d+)[\]"]?'
+            coords = re.findall(coord_pattern, content)
+            
+            strokes = []
+            if coords and len(coords) >= 3:
+                # Group coordinates into x and y arrays
+                x_coords = [int(coord[0]) for coord in coords[:5]]  # Limit to 5 points
+                y_coords = [int(coord[1]) for coord in coords[:5]]
+                
+                strokes.append({
+                    "x": x_coords,
+                    "y": y_coords,
+                    "description": "Extracted stroke from complex response"
+                })
+            
+            return {
+                "brush": brush,
+                "color": color,
+                "strokes": strokes,
+                "reasoning": "Extracted from complex response"
+            }
+            
+        except Exception as e:
+            print(f"Failed to extract from complex response: {e}")
+            return None
+    
     def _validate_action_data(self, action_data: dict) -> bool:
         """Validate that action_data has the required structure"""
         if not isinstance(action_data, dict):
@@ -288,104 +482,6 @@ class DrawingAgent:
         
         return True
     
-    def _extract_from_complex_response(self, content: str) -> dict:
-        """Extract essential drawing information from complex API responses"""
-        try:
-            # Try to find any JSON-like structure
-            import re
-            
-            # Look for brush information
-            brush_patterns = [
-                r'"brush":\s*"([^"]+)"',
-                r'"brush":\s*\[([^\]]+)\]',
-                r'brush[:\s]+([a-zA-Z]+)'
-            ]
-            
-            brush = "flowing"  # default
-            for pattern in brush_patterns:
-                match = re.search(pattern, content, re.IGNORECASE)
-                if match:
-                    brush_value = match.group(1).strip()
-                    if brush_value in ["watercolor", "crayon", "oil", "flowing"]:
-                        brush = brush_value
-                    elif "particle" in brush_value.lower():
-                        brush = "flowing"
-                    elif "water" in brush_value.lower():
-                        brush = "watercolor"
-                    elif "crayon" in brush_value.lower():
-                        brush = "crayon"
-                    elif "oil" in brush_value.lower() or "paint" in brush_value.lower():
-                        brush = "oil"
-                    break
-            
-            # Look for color information
-            color_patterns = [
-                r'"color":\s*"([^"]+)"',
-                r'#[0-9A-Fa-f]{6}',
-                r'colors?[:\s]*\{[^}]+\}'
-            ]
-            
-            color = "#ff6b6b"  # default
-            for pattern in color_patterns:
-                matches = re.findall(pattern, content, re.IGNORECASE)
-                if matches:
-                    if pattern == r'#[0-9A-Fa-f]{6}':
-                        color = matches[0]  # Use first hex color found
-                    elif '"color":' in pattern:
-                        color = matches[0]
-                    break
-            
-            # Look for stroke information
-            stroke_patterns = [
-                r'"strokes":\s*\[([^\]]+)\]',
-                r'"x":\s*\[([^\]]+)\]',
-                r'"y":\s*\[([^\]]+)\]'
-            ]
-            
-            strokes = []
-            for pattern in stroke_patterns:
-                matches = re.findall(pattern, content)
-                if matches:
-                    # Try to extract coordinate arrays
-                    try:
-                        # Look for x and y coordinate arrays
-                        x_matches = re.findall(r'"x":\s*\[([^\]]+)\]', content)
-                        y_matches = re.findall(r'"y":\s*\[([^\]]+)\]', content)
-                        
-                        if x_matches and y_matches:
-                            # Parse coordinate arrays
-                            x_coords = [int(x.strip()) for x in x_matches[0].split(',')]
-                            y_coords = [int(y.strip()) for y in y_matches[0].split(',')]
-                            
-                            if len(x_coords) == len(y_coords) and len(x_coords) > 0:
-                                strokes.append({
-                                    "x": x_coords,
-                                    "y": y_coords,
-                                    "description": "Extracted stroke"
-                                })
-                    except:
-                        pass
-                    break
-            
-            # If no strokes found, create a simple default stroke
-            if not strokes:
-                strokes = [{
-                    "x": [100, 110, 120, 130, 140],
-                    "y": [100, 105, 110, 115, 120],
-                    "description": "Default stroke"
-                }]
-            
-            return {
-                "brush": brush,
-                "color": color,
-                "strokes": strokes,
-                "reasoning": "Extracted from complex response"
-            }
-            
-        except Exception as e:
-            print(f"Error extracting from complex response: {e}")
-            return None
-    
     def reset_conversation(self):
         """Reset the conversation memory to start fresh"""
         self.messages = []
@@ -396,27 +492,55 @@ class DrawingAgent:
         return len(self.messages)
     
     def _validate_brush_type(self, brush_type: str) -> str:
-        """Validate and correct brush type if needed"""
-        valid_brushes = ["flowing", "watercolor", "crayon", "oil"]
+        """Validate and correct brush type, avoiding recent repeats"""
+        valid_brushes = ["flowing", "watercolor", "crayon", "oil", "pen", "marker", "rainbow", "wiggle", "spray", "fountain", "splatter", "toothpick"]
         
         # Direct match
         if brush_type in valid_brushes:
-            return brush_type
+            validated_brush = brush_type
+        else:
+            # Handle common variations
+            brush_lower = brush_type.lower()
+            if "particle" in brush_lower or "flowing" in brush_lower:
+                validated_brush = "flowing"
+            elif "water" in brush_lower or "watercolor" in brush_lower:
+                validated_brush = "watercolor"
+            elif "crayon" in brush_lower or "wax" in brush_lower:
+                validated_brush = "crayon"
+            elif "oil" in brush_lower or "paint" in brush_lower:
+                validated_brush = "oil"
+            elif "pen" in brush_lower:
+                validated_brush = "pen"
+            elif "marker" in brush_lower:
+                validated_brush = "marker"
+            elif "rainbow" in brush_lower or "color" in brush_lower:
+                validated_brush = "rainbow"
+            elif "wiggle" in brush_lower or "wavy" in brush_lower:
+                validated_brush = "wiggle"
+            elif "spray" in brush_lower or "aerosol" in brush_lower:
+                validated_brush = "spray"
+            elif "fountain" in brush_lower or "calligraphy" in brush_lower:
+                validated_brush = "fountain"
+            elif "splatter" in brush_lower or "splat" in brush_lower:
+                validated_brush = "splatter"
+            elif "toothpick" in brush_lower or "fine" in brush_lower:
+                validated_brush = "toothpick"
+            
+            # Default to flowing if no match
+            print(f"Warning: Unknown brush type '{brush_type}', using 'flowing' instead")
+            validated_brush = "flowing"
         
-        # Handle common variations
-        brush_lower = brush_type.lower()
-        if "particle" in brush_lower or "flowing" in brush_lower:
-            return "flowing"
-        elif "water" in brush_lower or "watercolor" in brush_lower:
-            return "watercolor"
-        elif "crayon" in brush_lower or "wax" in brush_lower:
-            return "crayon"
-        elif "oil" in brush_lower or "paint" in brush_lower:
-            return "oil"
+        # Avoid using the same brush as the last action
+        if self.brush_history and validated_brush == self.brush_history[-1]:
+            # Suggest an alternative brush
+            alternatives = ["flowing", "watercolor", "crayon", "oil", "pen", "marker"]
+            validated_brush = random.choice([b for b in alternatives if b != validated_brush])
         
-        # Default to flowing if no match
-        print(f"Warning: Unknown brush type '{brush_type}', using 'flowing' instead")
-        return "flowing"
+        self.brush_history.append(validated_brush)
+        if len(self.brush_history) > 3:  # Keep only last 3 brushes
+            self.brush_history.pop(0)
+            
+        return validated_brush
     
     def _enhance_strokes(self, strokes: List[Dict]) -> List[Dict]:
         """Enhance strokes by converting single points to multi-point strokes"""
@@ -500,7 +624,7 @@ class DrawingAgent:
             # 4. Update canvas_image_path
             
             # For now, we'll simulate this with a delay
-            time.sleep(2)
+            time.sleep(1)
             
         return actions
 

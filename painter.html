@@ -168,6 +168,11 @@
             --value-color: #8b4513;
         }
 
+        .eraser-theme {
+            --thumb-color: #666666;
+            --value-color: #666666;
+        }
+
         .brush-info {
             position: absolute;
             top: 80px;
@@ -196,6 +201,7 @@
                 <option value="watercolor">Watercolor</option>
                 <option value="crayon">Crayon</option>
                 <option value="oil">Oil Paint</option>
+                <option value="eraser">Eraser</option>
             </select>
         </div>
 
@@ -345,6 +351,18 @@
                     param4: { label: 'Canvas Texture', desc: 'Surface drag', min: 0, max: 10, step: 1, default: 4 }
                 },
                 color: '#8b4513'
+            },
+            eraser: {
+                name: 'Eraser Tool',
+                description: 'Remove paint with soft, natural erasing effects.',
+                theme: 'eraser-theme',
+                params: {
+                    param1: { label: 'Eraser Strength', desc: 'Erasing intensity', min: 0.1, max: 2, step: 0.1, default: 1.0 },
+                    param2: { label: 'Softness', desc: 'Edge softness', min: 5, max: 30, step: 1, default: 15 },
+                    param3: { label: 'Pressure', desc: 'Erasing pressure', min: 0.1, max: 2, step: 0.1, default: 1.0 },
+                    param4: { label: 'Texture', desc: 'Erasing texture', min: 0, max: 10, step: 1, default: 4 }
+                },
+                color: '#ffffff'
             }
         };
 
@@ -634,39 +652,39 @@
             constructor(x, y, color, size, thickness, strokePosition) {
                 this.x = x;
                 this.y = y;
-                this.size = size;
+                this.size = size * 1.2; // Increased base size for smoother coverage
                 this.thickness = thickness;
                 this.color = color;
                 this.strokePosition = strokePosition;
                 this.opacity = this.calculateOpacity();
                 this.life = 1.0;
-                this.decay = 0.001;
-                this.bleedRadius = 0;
-                this.maxBleed = thickness * 2;
-                this.viscousFlow = { 
-                    x: (Math.random() - 0.5) * 0.2 * (1 - param2 * 0.05), 
-                    y: (Math.random() - 0.5) * 0.2 * (1 - param2 * 0.05) 
+                this.decay = 0.0002; // Reduced decay for longer-lasting paint
+                this.blendRadius = 0;
+                this.maxBlend = thickness * 3; // Increased blend radius
+                this.impasto = {
+                    height: thickness * param1, // Paint buildup based on thickness param
+                    flow: {
+                        x: (Math.random() - 0.5) * 0.1 * param3,
+                        y: (Math.random() - 0.5) * 0.1 * param3
+                    }
                 };
             }
 
             calculateOpacity() {
-                if (this.strokePosition < 0.3) {
-                    return 0.85 + (this.thickness * 0.15);
-                }
-                const dragOpacity = Math.max(0.05, 0.7 - this.strokePosition * 0.6);
-                if (this.strokePosition > 0.5 && Math.random() < (this.strokePosition - 0.5) * 0.8) {
-                    return 0;
-                }
-                return dragOpacity;
+                // Higher base opacity for oil paint's rich coverage
+                const baseOpacity = 0.9 + (this.thickness * 0.1);
+                return baseOpacity;
             }
 
             update() {
-                if (this.bleedRadius < this.maxBleed) {
-                    this.bleedRadius += 0.05 * param3;
-                    this.x += this.viscousFlow.x;
-                    this.y += this.viscousFlow.y;
-                    this.viscousFlow.x *= 0.95;
-                    this.viscousFlow.y *= 0.95;
+                if (this.blendRadius < this.maxBlend) {
+                    this.blendRadius += 0.02 * param3; // Slower blending
+                    
+                    // Smoother paint flow
+                    this.x += this.impasto.flow.x;
+                    this.y += this.impasto.flow.y;
+                    this.impasto.flow.x *= 0.98;
+                    this.impasto.flow.y *= 0.98;
                 }
                 this.life -= this.decay;
                 return this.life > 0;
@@ -677,25 +695,39 @@
                 const rgb = hexToRgb(this.color);
                 if (!rgb) return;
                 
-                // Draw on permanent layer (dry layer) for consistency
+                // Draw on permanent layer with impasto effect
                 if (dryLayer.width > 0 && dryLayer.height > 0) {
                     dryCtx.save();
+                    
+                    // Base paint layer with consistent size
                     dryCtx.globalAlpha = this.opacity;
                     dryCtx.fillStyle = this.color;
                     dryCtx.beginPath();
-                    dryCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    dryCtx.arc(this.x, this.y, this.size * 1.2, 0, Math.PI * 2); // Increased base size
+                    dryCtx.fill();
+                    
+                    // Impasto highlight effect with minimal size reduction
+                    dryCtx.globalAlpha = this.opacity * 0.4;
+                    dryCtx.fillStyle = `rgba(255,255,255,0.2)`;
+                    dryCtx.beginPath();
+                    dryCtx.arc(
+                        this.x - this.impasto.height, 
+                        this.y - this.impasto.height, 
+                        this.size * 0.995, // Less size reduction for highlight
+                        0, Math.PI * 2
+                    );
                     dryCtx.fill();
                     dryCtx.restore();
                 }
                 
-                // Also draw temporary glow effect on main canvas
+                // Wet paint effect on main canvas with consistent size
                 ctx.save();
-                ctx.globalAlpha = this.opacity * 0.3;
+                ctx.globalAlpha = this.opacity * 0.5;
                 ctx.fillStyle = this.color;
-                ctx.shadowBlur = 5;
+                ctx.shadowBlur = 3;
                 ctx.shadowColor = this.color;
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.arc(this.x, this.y, this.size * 1.3, 0, Math.PI * 2); // Increased wet effect size
                 ctx.fill();
                 ctx.restore();
             }
@@ -715,6 +747,9 @@
                     break;
                 case 'oil':
                     createOilPaintStroke(x, y);
+                    break;
+                case 'eraser':
+                    createEraserStroke(x, y);
                     break;
             }
         }
@@ -788,6 +823,81 @@
                     (Math.random() * 2 + 3) * param1 * brushLoad : 
                     (Math.random() * 4 + 1) * param1 * Math.max(0.2, brushLoad);
                 paintGlobs.push(new PaintGlob(px, py, brushColor, globSize, param1, strokePos));
+            }
+        }
+
+        function createEraserStroke(x, y) {
+            // Erase from the dry layer (permanent marks)
+            if (dryLayer.width > 0 && dryLayer.height > 0) {
+                dryCtx.save();
+                dryCtx.globalCompositeOperation = 'destination-out';
+                
+                // Create a soft eraser effect
+                const eraserSize = brushSize * param1;
+                const gradient = dryCtx.createRadialGradient(x, y, 0, x, y, eraserSize);
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${param3 * 0.8})`);
+                gradient.addColorStop(0.7, `rgba(255, 255, 255, ${param3 * 0.4})`);
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                
+                dryCtx.fillStyle = gradient;
+                dryCtx.beginPath();
+                dryCtx.arc(x, y, eraserSize, 0, Math.PI * 2);
+                dryCtx.fill();
+                
+                // Add some texture variation based on param4
+                if (param4 > 0) {
+                    const textureCount = Math.floor(param4 * 2);
+                    for (let i = 0; i < textureCount; i++) {
+                        const angle = (Math.PI * 2 * i) / textureCount;
+                        const radius = Math.random() * eraserSize * 0.8;
+                        const tx = x + Math.cos(angle) * radius;
+                        const ty = y + Math.sin(angle) * radius;
+                        const textureSize = (Math.random() * 3 + 1) * param2 * 0.1;
+                        
+                        const textureGradient = dryCtx.createRadialGradient(tx, ty, 0, tx, ty, textureSize);
+                        textureGradient.addColorStop(0, `rgba(255, 255, 255, ${param3 * 0.3})`);
+                        textureGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                        
+                        dryCtx.fillStyle = textureGradient;
+                        dryCtx.beginPath();
+                        dryCtx.arc(tx, ty, textureSize, 0, Math.PI * 2);
+                        dryCtx.fill();
+                    }
+                }
+                
+                dryCtx.restore();
+            }
+            
+            // Also erase from the wet layer for watercolor effects
+            if (currentBrush === 'watercolor' && wetLayer.width > 0 && wetLayer.height > 0) {
+                wetCtx.save();
+                wetCtx.globalCompositeOperation = 'destination-out';
+                
+                const eraserSize = brushSize * param1 * 0.8;
+                const gradient = wetCtx.createRadialGradient(x, y, 0, x, y, eraserSize);
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${param3 * 0.6})`);
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                
+                wetCtx.fillStyle = gradient;
+                wetCtx.beginPath();
+                wetCtx.arc(x, y, eraserSize, 0, Math.PI * 2);
+                wetCtx.fill();
+                wetCtx.restore();
+            }
+            
+            // Create connecting stroke effect for smooth erasing
+            if (isDrawing && dryLayer.width > 0 && dryLayer.height > 0) {
+                dryCtx.save();
+                dryCtx.globalCompositeOperation = 'destination-out';
+                dryCtx.globalAlpha = param3 * 0.4;
+                dryCtx.strokeStyle = 'rgba(255, 255, 255, 1)';
+                dryCtx.lineWidth = brushSize * 0.4;
+                dryCtx.lineCap = 'round';
+                dryCtx.beginPath();
+                dryCtx.moveTo(prevMouseX, prevMouseY);
+                dryCtx.lineTo(x, y);
+                dryCtx.stroke();
+                dryCtx.restore();
             }
         }
 

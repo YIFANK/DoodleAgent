@@ -1,0 +1,44 @@
+I'll add some playful whiskers to complement the cat drawing, using the fountain brush for elegant curved lines.
+
+{
+  "brush": "fountain",
+  "strokes": [
+    {
+      "x": [400, 450, 480],
+      "y": [250, 245, 240],
+      "t": [3, 3],
+      "description": "Right whisker up"
+    },
+    {
+      "x": [400, 450, 485],
+      "y": [260, 260, 260],
+      "t": [3, 3],
+      "description": "Right whisker mid"
+    },
+    {
+      "x": [400, 450, 480],
+      "y": [270, 275, 280],
+      "t": [3, 3],
+      "description": "Right whisker down"
+    },
+    {
+      "x": [380, 330, 300],
+      "y": [250, 245, 240],
+      "t": [3, 3],
+      "description": "Left whisker up"
+    },
+    {
+      "x": [380, 330, 295],
+      "y": [260, 260, 260],
+      "t": [3, 3],
+      "description": "Left whisker mid"
+    },
+    {
+      "x": [380, 330, 300],
+      "y": [270, 275, 280],
+      "t": [3, 3],
+      "description": "Left whisker down"
+    }
+  ],
+  "reasoning": "Used fountain brush for elegant curved whiskers. Placed symmetrically (X: 300-480) around center face area. Slow timing for smooth curves."
+}

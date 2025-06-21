@@ -1,0 +1,14 @@
+Let's start with something playful and organic on this blank canvas - I'm thinking a flowing, rainbow-colored wave pattern that sweeps across the space.
+
+{
+  "brush": "rainbow",
+  "strokes": [
+    {
+      "x": [50, 200, 400, 600, 800],
+      "y": [250, 150, 300, 200, 350],
+      "t": [4, 4, 4, 4],
+      "description": "flowing wave"
+    }
+  ],
+  "reasoning": "Creating a dynamic, colorful wave pattern to bring life and movement to the empty canvas"
+}

@@ -1,0 +1,12 @@
+{
+  "brush": "rainbow",
+  "strokes": [
+    {
+      "x": [100, 200, 350, 450, 550, 650, 750],
+      "y": [450, 400, 300, 250, 300, 400, 450],
+      "t": [4, 4, 4, 4, 4, 4],
+      "description": "Rainbow wave"
+    }
+  ],
+  "reasoning": "Adding a flowing rainbow wave below complements the existing colorful dots and creates harmony"
+}

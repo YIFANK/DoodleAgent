@@ -22,7 +22,7 @@ class PaintingBridge:
     Handles the execution of drawing actions on the HTML canvas.
     """
     
-    def __init__(self, painter_url: str = "file:///path/to/painter.html"):
+    def __init__(self, painter_url: str = "file:///path/to/allbrush.html"):
         self.painter_url = painter_url
         self.driver = None
         self.canvas = None
@@ -65,7 +65,7 @@ class PaintingBridge:
             
         except Exception as e:
             print(f"Error setting brush '{brush_type}': {e}")
-            print("Available brush types: flowing, watercolor, crayon, oil")
+            print("Available brush types: flowing, watercolor, crayon, oil, pen, marker, rainbow, wiggle, spray, fountain, splatter, toothpick")
             # Try to set a default brush
             try:
                 brush_selector = Select(self.driver.find_element(By.ID, "brushSelector"))
@@ -379,7 +379,7 @@ class AutomatedPainter:
     for automated painting based on text prompts.
     """
     
-    def __init__(self, api_key: str, painter_url: str = "file:///path/to/painter.html"):
+    def __init__(self, api_key: str, painter_url: str = "file:///path/to/allbrush.html"):
         self.agent = DrawingAgent(api_key)
         self.bridge = PaintingBridge(painter_url)
         
@@ -435,20 +435,23 @@ if __name__ == "__main__":
     # Initialize the automated painter
     painter = AutomatedPainter(
         api_key="your-api-key-here",
-        painter_url="file:///path/to/DoodleAgent/painter.html"
+        painter_url="file:///path/to/DoodleAgent/allbrush.html"
     )
     
     try:
         # Start the painting interface
         painter.start()
         
-        # Define a sequence of prompts for a landscape
+        # Define a sequence of prompts for a landscape using various brushes
         landscape_prompts = [
-            "Create a warm sunset sky with orange and pink gradients",
-            "Add dark mountain silhouettes in the background",
-            "Paint a flowing blue river in the foreground",
-            "Add green trees along the riverbank",
-            "Include some white clouds in the sky"
+            "Create a warm sunset sky with orange and pink gradients using watercolor",
+            "Add dark mountain silhouettes in the background using oil paint",
+            "Paint a flowing blue river in the foreground with the flowing brush",
+            "Add green trees along the riverbank using crayon for texture",
+            "Include some white clouds in the sky with the spray brush",
+            "Add fine details with the pen brush for grass and small elements",
+            "Use the rainbow brush to add a colorful arc in the sky",
+            "Add some playful elements with the wiggle brush"
         ]
         
         # Execute the painting sequence

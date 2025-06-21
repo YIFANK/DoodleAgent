@@ -1,0 +1,14 @@
+Since we're starting with a blank canvas, let's create something playful and organic using the wiggle brush to establish an interesting foundation.
+
+{
+  "brush": "wiggle",
+  "strokes": [
+    {
+      "x": [100, 200, 350, 500, 650, 750],
+      "y": [400, 300, 250, 200, 300, 350],
+      "t": [4, 3, 4, 3, 4],
+      "description": "Flowing wave"
+    }
+  ],
+  "reasoning": "Creating a dynamic flowing line across the canvas to establish movement and organic energy"
+}

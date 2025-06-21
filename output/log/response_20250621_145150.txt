@@ -1,0 +1,14 @@
+Let's start by adding a playful element to this blank canvas using the wiggle brush to create a whimsical wavy line that dances across the space.
+
+{
+  "brush": "wiggle",
+  "strokes": [
+    {
+      "x": [100, 300, 500, 700],
+      "y": [250, 150, 350, 200],
+      "t": [4, 4, 4],
+      "description": "Dancing wave"
+    }
+  ],
+  "reasoning": "Creating a dynamic, flowing line to break the emptiness and establish a playful mood on the canvas"
+}

@@ -1,0 +1,14 @@
+Since we're starting with a blank canvas, let's draw something fun and whimsical! I'll create a playful butterfly using the rainbow brush to make it colorful and vibrant.
+
+{
+  "brush": "rainbow",
+  "strokes": [
+    {
+      "x": [400, 350, 300, 350, 400],
+      "y": [250, 200, 150, 100, 150],
+      "t": [4, 4, 4, 4],
+      "description": "Left wing of butterfly with flowing curves"
+    }
+  ],
+  "reasoning": "Starting with a rainbow butterfly to add cheerful energy to the blank canvas. Using slow speed (4) for smooth, graceful wing curves."
+}

@@ -57,7 +57,7 @@ def main():
         # Demo 2: Abstract art
         print("\n🎭 Demo 2: Creating abstract art")
         abstract_prompts = [
-            "Create flowing particle effects in red and orange",
+            "Create dynamic spray effects in red and orange",
             "Add swirling blue and purple watercolor patterns",
             "Include some bold black crayon strokes for contrast",
             "Finish with some thick oil paint dabs in yellow"
@@ -77,7 +77,7 @@ def main():
         print("\n👤 Demo 3: Creating a portrait sketch")
         portrait_prompts = [
             "Sketch the basic outline of a face with crayon",
-            "Add hair using flowing particle effects",
+            "Add hair using spray brush effects for texture",
             "Create eyes and nose with oil paint details",
             "Add a subtle background with watercolor"
         ]

@@ -1,0 +1,12 @@
+{
+  "brush": "rainbow",
+  "strokes": [
+    {
+      "x": [100, 200, 350, 450, 600, 750],
+      "y": [450, 350, 300, 250, 200, 150],
+      "t": [4, 4, 4, 4, 4],
+      "description": "Rising bubbles"
+    }
+  ],
+  "reasoning": "Adding ascending rainbow bubbles to complement existing circles and create upward flowing movement"
+}

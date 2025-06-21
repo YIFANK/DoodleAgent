@@ -1,0 +1,14 @@
+I notice there's a playful combination of rainbow dots and wiggly lines, with some spray texture on the right side. Let's add to this whimsical composition with another fun element!
+
+{
+  "brush": "wiggle",
+  "strokes": [
+    {
+      "x": [700, 750, 800, 825, 800, 750],
+      "y": [100, 80, 100, 150, 200, 180],
+      "t": [4, 3, 4, 4, 3],
+      "description": "Drawing a playful butterfly wing shape"
+    }
+  ],
+  "reasoning": "Adding a whimsical butterfly wing using the wiggle brush will complement the existing flowing design and create a sense of movement and lightness. The wiggle brush's orange color and wavy character matches well with the current elements."
+}

@@ -1,0 +1,14 @@
+The canvas appears completely blank, giving us an opportunity to start fresh! Let's create something playful and dynamic using the rainbow brush to add some vibrant energy.
+
+{
+  "brush": "rainbow",
+  "strokes": [
+    {
+      "x": [100, 200, 400, 600, 750],
+      "y": [400, 200, 300, 150, 350],
+      "t": [4, 4, 4, 4],
+      "description": "Dancing wave"
+    }
+  ],
+  "reasoning": "Starting with a flowing rainbow wave to bring dynamic movement and joyful colors to the empty canvas"
+}

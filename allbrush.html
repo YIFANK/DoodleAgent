@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Painting Studio</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .controls {
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(15px);
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .brush-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            margin-right: 20px;
+            padding-right: 20px;
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .brush-selector label {
+            color: #fff;
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        select {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 12px;
+            cursor: pointer;
+            outline: none;
+            min-width: 120px;
+        }
+
+        select option {
+            background: #2a2a2a;
+            color: #fff;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .control-group label {
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            min-height: 14px;
+        }
+
+        .control-description {
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.6);
+            font-style: italic;
+            margin-top: 2px;
+            min-height: 12px;
+            text-align: center;
+        }
+
+        input[type="range"] {
+            width: 100px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--thumb-color, #ff6b6b);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(255, 107, 107, 0.5);
+        }
+
+        input[type="color"] {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        #canvas {
+            background: #FFF9E3 !important;
+            cursor: crosshair;
+            flex: 1;
+        }
+
+        .value-display {
+            color: var(--value-color, #ff6b6b);
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        /* Brush-specific theming */
+        .watercolor-theme {
+            --thumb-color: #4a90e2;
+            --value-color: #4a90e2;
+        }
+
+        .crayon-theme {
+            --thumb-color: #d2691e;
+            --value-color: #d2691e;
+        }
+
+        .oil-theme {
+            --thumb-color: #8b4513;
+            --value-color: #8b4513;
+        }
+
+        .pen-theme {
+            --thumb-color: #000000;
+            --value-color: #000000;
+        }
+
+        .marker-theme {
+            --thumb-color: #ff7700;
+            --value-color: #ff7700;
+        }
+
+        .rainbow-theme {
+            --thumb-color: #ff6b6b;
+            --value-color: #ff6b6b;
+        }
+
+        .wiggle-theme {
+            --thumb-color: #ff7800;
+            --value-color: #ff7800;
+        }
+
+        .spray-theme {
+            --thumb-color: #000000;
+            --value-color: #000000;
+        }
+
+        .toothpick-theme {
+            --thumb-color: #3cb446;
+            --value-color: #3cb446;
+        }
+
+        .brush-info {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 11px;
+            max-width: 200px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .brush-info.visible {
+            opacity: 1;
+        }
+
+        canvas, #canvas, .canvas-container, .canvas-wrapper {
+            background: #FFF9E3 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls watercolor-theme" id="controls">
+        <div class="brush-selector">
+            <label>Brush Type</label>
+            <select id="brushSelector">
+                <option value="watercolor">Watercolor</option>
+                <option value="crayon">Crayon</option>
+                <option value="oil">Oil Paint</option>
+                <option value="pen">Pen</option>
+                <option value="marker">Marker</option>
+                <option value="rainbow">Rainbow</option>
+                <option value="wiggle">Wiggle</option>
+                <option value="spray">Spray</option>
+                <option value="fountain">Fountain</option>
+                <option value="splatter">Splatter</option>
+                <option value="toothpick">Toothpick</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Brush Size</label>
+            <input type="range" id="brushSize" min="5" max="50" value="30">
+            <span class="value-display" id="brushSizeValue">20</span>
+        </div>
+
+        <div class="control-group">
+            <label id="param1Label">Flow Rate</label>
+            <input type="range" id="param1" min="0.1" max="2" step="0.1" value="1.0">
+            <span class="value-display" id="param1Value">1.0</span>
+            <div class="control-description" id="param1Desc">Particle speed</div>
+        </div>
+
+        <div class="control-group">
+            <label id="param2Label">Particles</label>
+            <input type="range" id="param2" min="5" max="30" value="15">
+            <span class="value-display" id="param2Value">15</span>
+            <div class="control-description" id="param2Desc">Particle count</div>
+        </div>
+
+        <div class="control-group">
+            <label id="param3Label">Turbulence</label>
+            <input type="range" id="param3" min="0.1" max="2" step="0.1" value="1.0">
+            <span class="value-display" id="param3Value">1.0</span>
+            <div class="control-description" id="param3Desc">Chaos amount</div>
+        </div>
+
+        <div class="control-group">
+            <label id="param4Label">Paper Roughness</label>
+            <input type="range" id="param4" min="0" max="10" value="4">
+            <span class="value-display" id="param4Value">4</span>
+            <div class="control-description" id="param4Desc">Surface texture</div>
+        </div>
+
+        <div class="control-group">
+            <label>Color</label>
+            <input type="color" id="brushColor" value="#4a90e2">
+        </div>
+
+        <button id="clearCanvas">Clear Canvas</button>
+        <button id="saveCanvas">Save Canvas</button>
+    </div>
+
+    <div class="brush-info" id="brushInfo">
+        <strong id="brushName">Watercolor Brush</strong><br>
+        <span id="brushDescription">Realistic watercolor with bleeding and organic flow patterns.</span>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Canvas layers for different brush types
+        const wetLayer = document.createElement('canvas');
+        const wetCtx = wetLayer.getContext('2d');
+        const dryLayer = document.createElement('canvas');
+        const dryCtx = dryLayer.getContext('2d');
+
+        // Set canvas size
+        function resizeCanvas() {
+            const controlsHeight = document.querySelector('.controls').offsetHeight;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight - controlsHeight;
+            wetLayer.width = canvas.width;
+            wetLayer.height = canvas.height;
+            dryLayer.width = canvas.width;
+            dryLayer.height = canvas.height;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Unified settings
+        let currentBrush = 'watercolor';
+        let brushSize = 20;
+        let param1 = 1.0;
+        let param2 = 15;
+        let param3 = 1.0;
+        let param4 = 4;
+        let brushColor = '#4a90e2';
+        let frameCount = 0;
+
+        // Particle systems
+        let particles = [];
+        let waterDroplets = [];
+        let pigmentParticles = [];
+        let waxParticles = [];
+        let paintGlobs = [];
+        let strokeHistory = [];
+        let isDrawing = false;
+        let mouseX = 0;
+        let mouseY = 0;
+        let prevMouseX = 0;
+        let prevMouseY = 0;
+        let strokeLength = 0;
+        let brushLoad = 1.0;
+
+        // Math utilities
+        function lerp(start, end, amt) {
+            return (1 - amt) * start + amt * end;
+        }
+
+        function dist(x1, y1, x2, y2) {
+            return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        }
+
+        // Brush configurations
+        const brushConfigs = {
+            watercolor: {
+                name: 'Watercolor Brush',
+                description: 'Realistic watercolor with bleeding and organic flow patterns.',
+                theme: 'watercolor-theme',
+                params: {
+                    param1: { label: 'Water Content', desc: 'Controls bleeding', min: 0.1, max: 2, step: 0.1, default: 1.0 },
+                    param2: { label: 'Pigment Density', desc: 'Color intensity', min: 5, max: 30, step: 1, default: 15 },
+                    param3: { label: 'Flow Speed', desc: 'Water movement', min: 0.1, max: 2, step: 0.1, default: 1.0 },
+                    param4: { label: 'Paper Texture', desc: 'Surface roughness', min: 0, max: 10, step: 1, default: 4 }
+                },
+                color: '#4a90e2'
+            },
+            crayon: {
+                name: 'Crayon Brush',
+                description: 'Textured waxy application with natural gaps and paper interaction.',
+                theme: 'crayon-theme',
+                params: {
+                    param1: { label: 'Pressure', desc: 'Wax density', min: 0.1, max: 2, step: 0.1, default: 1.0 },
+                    param2: { label: 'Texture Strength', desc: 'Grain intensity', min: 5, max: 30, step: 1, default: 15 },
+                    param3: { label: 'Grain Size', desc: 'Texture scale', min: 0.1, max: 2, step: 0.1, default: 1.0 },
+                    param4: { label: 'Paper Roughness', desc: 'Surface texture', min: 0, max: 10, step: 1, default: 4 }
+                },
+                color: '#d2691e'
+            },
+            oil: {
+                name: 'Oil Paint Brush',
+                description: 'Thick impasto application with natural paint depletion and streaking.',
+                theme: 'oil-theme',
+                params: {
+                    param1: { label: 'Paint Thickness', desc: 'Impasto effect', min: 0.1, max: 2, step: 0.1, default: 1.0 },
+                    param2: { label: 'Viscosity', desc: 'Paint thickness', min: 5, max: 30, step: 1, default: 15 },
+                    param3: { label: 'Blending', desc: 'Edge softness', min: 0.1, max: 2, step: 0.1, default: 1.0 },
+                    param4: { label: 'Canvas Texture', desc: 'Surface drag', min: 0, max: 10, step: 1, default: 4 }
+                },
+                color: '#8b4513'
+            },
+            pen: {
+                name: 'Pen Brush',
+                description: 'Clean, precise pen lines with consistent flow.',
+                theme: 'pen-theme',
+                params: {
+                    param1: { label: 'Line Width', desc: 'Pen thickness', min: 1, max: 10, step: 1, default: 2 },
+                    param2: { label: 'Opacity', desc: 'Ink opacity', min: 50, max: 100, step: 5, default: 100 },
+                    param3: { label: 'Smoothness', desc: 'Line smoothness', min: 0.1, max: 2, step: 0.1, default: 1.0 },
+                    param4: { label: 'Flow Rate', desc: 'Ink flow', min: 0, max: 10, step: 1, default: 1 }
+                },
+                color: '#000000'
+            },
+            marker: {
+                name: 'Marker Brush',
+                description: 'Broad marker strokes with semi-transparent blending.',
+                theme: 'marker-theme',
+                params: {
+                    param1: { label: 'Opacity', desc: 'Marker transparency', min: 10, max: 100, step: 5, default: 40 },
+                    param2: { label: 'Size', desc: 'Marker width', min: 20, max: 40, step: 5, default: 20 },
+                    param3: { label: 'Blending', desc: 'Color blending', min: 0.1, max: 2, step: 0.1, default: 1.0 },
+                    param4: { label: 'Texture', desc: 'Surface texture', min: 0, max: 10, step: 1, default: 2 }
+                },
+                color: '#ff7700'
+            },
+            rainbow: {
+                name: 'Rainbow Brush',
+                description: 'Dynamic rainbow colors that change as you draw with flowing effects.',
+                theme: 'rainbow-theme',
+                params: {
+                    param1: { label: 'Speed', desc: 'Color change rate', min: 1, max: 20, step: 1, default: 5 },
+                    param2: { label: 'Max Size', desc: 'Maximum brush size', min: 10, max: 100, step: 1, default: 50 },
+                    param3: { label: 'Saturation', desc: 'Color intensity', min: 30, max: 100, step: 5, default: 80 },
+                    param4: { label: 'Brightness', desc: 'Color brightness', min: 30, max: 90, step: 5, default: 60 }
+                },
+                color: '#ff6b6b'
+            },
+            wiggle: {
+                name: 'Wiggle Brush',
+                description: 'Playful wiggling lines with dynamic curves and organic movement.',
+                theme: 'wiggle-theme',
+                params: {
+                    param1: { label: 'Line Width', desc: 'Stroke thickness', min: 1, max: 10, step: 1, default: 3 },
+                    param2: { label: 'Arc Frequency', desc: 'Wiggle frequency', min: 1, max: 10, step: 1, default: 2 },
+                    param3: { label: 'Smoothness', desc: 'Line smoothness', min: 0.1, max: 2, step: 0.1, default: 1.0 },
+                    param4: { label: 'Color', desc: 'Base color', min: 0, max: 10, step: 1, default: 5 }
+                },
+                color: '#ff7800'
+            },
+            spray: {
+                name: 'Spray Brush',
+                description: 'Spray paint effect with particle dispersion and texture.',
+                theme: 'spray-theme',
+                params: {
+                    param1: { label: 'Spray Density', desc: 'Particle density', min: 10, max: 80, step: 5, default: 40 },
+                    param2: { label: 'Spray Radius', desc: 'Base spray size', min: 8, max: 30, step: 1, default: 15 },
+                    param3: { label: 'Speed Factor', desc: 'Movement sensitivity', min: 0.5, max: 3, step: 0.1, default: 1.0 },
+                    param4: { label: 'Opacity', desc: 'Spray opacity', min: 50, max: 100, step: 5, default: 80 }
+                },
+                color: '#000000'
+            },
+            fountain: {
+                name: 'Fountain Brush',
+                description: 'Fountain pen with diagonal slanted lines and smooth ink flow.',
+                theme: 'fountain-theme',
+                params: {
+                    param1: { label: 'Line Width', desc: 'Slant width', min: 1, max: 10, step: 1, default: 5 },
+                    param2: { label: 'Flow Rate', desc: 'Number of lerps', min: 8, max: 24, step: 1, default: 16 },
+                    param3: { label: 'Smoothness', desc: 'Line smoothness', min: 0.1, max: 2, step: 0.1, default: 1.0 },
+                    param4: { label: 'Opacity', desc: 'Ink opacity', min: 70, max: 100, step: 5, default: 100 }
+                },
+                color: '#000000'
+            },
+            splatter: {
+                name: 'Splatter Brush',
+                description: 'Dynamic splatter effect with colorful lerped points creating organic spray patterns.',
+                theme: 'splatter-theme',
+                params: {
+                    param1: { label: 'Point Size', desc: 'Splatter dot size', min: 1, max: 10, step: 1, default: 7 },
+                    param2: { label: 'Lerp Count', desc: 'Number of points', min: 4, max: 16, step: 1, default: 8 },
+                    param3: { label: 'Shift Amount', desc: 'Splatter spread', min: 1, max: 20, step: 1, default: 8 },
+                    param4: { label: 'Opacity', desc: 'Point opacity', min: 50, max: 255, step: 5, default: 200 }
+                },
+                color: '#ff00ff'
+            },
+            toothpick: {
+                name: 'Toothpick Brush',
+                description: 'Directional elliptical brush that rotates with mouse movement, creating natural organic strokes.',
+                theme: 'toothpick-theme',
+                params: {
+                    param1: { label: 'Width Multiplier', desc: 'Ellipse length', min: 2, max: 18, step: 1, default: 2 },
+                    param2: { label: 'Min Size', desc: 'Ellipse height', min: 2, max: 12, step: 1, default: 4 },
+                    param3: { label: 'Opacity', desc: 'Brush opacity', min: 50, max: 255, step: 5, default: 150 },
+                    param4: { label: 'Unused', desc: 'Not used', min: 0, max: 10, step: 1, default: 0 }
+                },
+                color: '#3cb446'
+            }
+        };
+
+        // Convert hex to RGB
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        // Particle classes
+        class WaterDroplet {
+            constructor(x, y, size, color) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.originalSize = size;
+                this.vx = (Math.random() - 0.5) * param3;
+                this.vy = (Math.random() - 0.5) * param3;
+                this.life = 1.0;
+                this.evaporation = 0.002 + Math.random() * 0.003;
+                this.color = color;
+                this.opacity = 0.3 + Math.random() * 0.4;
+                this.spread = 0;
+                this.maxSpread = param1 * 20;
+                this.absorbed = false;
+            }
+
+            update() {
+                this.vy += 0.01;
+                if (Math.random() < param4 * 0.01) {
+                    this.vx += (Math.random() - 0.5) * 0.1;
+                    this.vy += (Math.random() - 0.5) * 0.1;
+                }
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= 0.95;
+                this.vy *= 0.95;
+                this.spread += 0.5;
+                this.size = this.originalSize + this.spread * 0.3;
+                this.life -= this.evaporation;
+                this.opacity *= 0.998;
+
+                if (this.spread > 2 && !this.absorbed) {
+                    this.createPermanentMark();
+                }
+
+                if (this.spread > this.maxSpread * 0.7 && !this.absorbed) {
+                    this.absorbIntoPaper();
+                    this.absorbed = true;
+                }
+                return this.life > 0 && this.opacity > 0.01;
+            }
+
+            createPermanentMark() {
+                const rgb = hexToRgb(this.color);
+                if (rgb && dryLayer.width > 0 && dryLayer.height > 0) {
+                    dryCtx.save();
+                    dryCtx.globalAlpha = this.opacity * 0.4;
+                    const gradient = dryCtx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+                    gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)`);
+                    gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+                    dryCtx.fillStyle = gradient;
+                    dryCtx.beginPath();
+                    dryCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    dryCtx.fill();
+                    dryCtx.restore();
+                }
+            }
+
+            absorbIntoPaper() {
+                const rgb = hexToRgb(this.color);
+                if (rgb && dryLayer.width > 0 && dryLayer.height > 0) {
+                    dryCtx.save();
+                    dryCtx.globalAlpha = this.opacity * 0.8;
+                    const gradient = dryCtx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+                    gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`);
+                    gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+                    dryCtx.fillStyle = gradient;
+                    dryCtx.beginPath();
+                    dryCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    dryCtx.fill();
+                    dryCtx.restore();
+                }
+            }
+
+            draw() {
+                const rgb = hexToRgb(this.color);
+                if (!rgb) return;
+                wetCtx.save();
+                wetCtx.globalAlpha = this.opacity;
+                const gradient = wetCtx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+                gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`);
+                gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+                wetCtx.fillStyle = gradient;
+                wetCtx.beginPath();
+                wetCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                wetCtx.fill();
+                wetCtx.restore();
+            }
+        }
+
+        class WaxParticle {
+            constructor(x, y, color, size) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.color = color;
+                this.opacity = 0.6 + Math.random() * 0.4;
+                this.settled = false;
+                this.life = 1.0;
+                this.decay = 0.002;
+                this.displacement = { x: (Math.random() - 0.5) * param3, y: (Math.random() - 0.5) * param3 };
+                this.paperSkip = Math.random() < (param4 * 0.01);
+            }
+
+            update() {
+                if (!this.settled) {
+                    this.x += this.displacement.x * 0.1;
+                    this.y += this.displacement.y * 0.1;
+                    this.displacement.x *= 0.9;
+                    this.displacement.y *= 0.9;
+                    if (Math.abs(this.displacement.x) < 0.1) this.settled = true;
+                }
+                this.life -= this.decay;
+                return this.life > 0;
+            }
+
+            draw() {
+                if (this.paperSkip) return;
+
+                if (dryLayer.width > 0 && dryLayer.height > 0) {
+                    dryCtx.save();
+                    dryCtx.globalAlpha = this.opacity * this.life;
+                    dryCtx.fillStyle = this.color;
+                    dryCtx.beginPath();
+                    dryCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    dryCtx.fill();
+                    dryCtx.restore();
+                }
+
+                ctx.save();
+                ctx.globalAlpha = this.opacity * this.life * 0.3;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class PaintGlob {
+            constructor(x, y, color, size, thickness, strokePosition) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.thickness = thickness;
+                this.color = color;
+                this.strokePosition = strokePosition;
+                this.opacity = this.calculateOpacity();
+                this.life = 1.0;
+                this.decay = 0.001;
+                this.bleedRadius = 0;
+                this.maxBleed = thickness * 2;
+                this.viscousFlow = {
+                    x: (Math.random() - 0.5) * 0.2 * (1 - param2 * 0.05),
+                    y: (Math.random() - 0.5) * 0.2 * (1 - param2 * 0.05)
+                };
+            }
+
+            calculateOpacity() {
+                if (this.strokePosition < 0.3) {
+                    return 0.85 + (this.thickness * 0.15);
+                }
+                const dragOpacity = Math.max(0.05, 0.7 - this.strokePosition * 0.6);
+                if (this.strokePosition > 0.5 && Math.random() < (this.strokePosition - 0.5) * 0.8) {
+                    return 0;
+                }
+                return dragOpacity;
+            }
+
+            update() {
+                if (this.bleedRadius < this.maxBleed) {
+                    this.bleedRadius += 0.05 * param3;
+                    this.x += this.viscousFlow.x;
+                    this.y += this.viscousFlow.y;
+                    this.viscousFlow.x *= 0.95;
+                    this.viscousFlow.y *= 0.95;
+                }
+                this.life -= this.decay;
+                return this.life > 0;
+            }
+
+            draw() {
+                if (this.opacity <= 0) return;
+                const rgb = hexToRgb(this.color);
+                if (!rgb) return;
+
+                if (dryLayer.width > 0 && dryLayer.height > 0) {
+                    dryCtx.save();
+                    dryCtx.globalAlpha = this.opacity;
+                    dryCtx.fillStyle = this.color;
+                    dryCtx.beginPath();
+                    dryCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    dryCtx.fill();
+                    dryCtx.restore();
+                }
+
+                ctx.save();
+                ctx.globalAlpha = this.opacity * 0.3;
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Switch brush type
+        function switchBrush(brushType) {
+            currentBrush = brushType;
+            const config = brushConfigs[brushType];
+
+            // Clear all particles
+            particles = [];
+            waterDroplets = [];
+            pigmentParticles = [];
+            waxParticles = [];
+            paintGlobs = [];
+
+            // Update theme
+            const controls = document.getElementById('controls');
+            controls.className = `controls ${config.theme}`;
+
+            // Update brush info
+            document.getElementById('brushName').textContent = config.name;
+            document.getElementById('brushDescription').textContent = config.description;
+
+            // Update parameter labels and settings
+            Object.keys(config.params).forEach(paramKey => {
+                const param = config.params[paramKey];
+                const input = document.getElementById(paramKey);
+                const label = document.getElementById(`${paramKey}Label`);
+                const desc = document.getElementById(`${paramKey}Desc`);
+                const value = document.getElementById(`${paramKey}Value`);
+
+                label.textContent = param.label;
+                desc.textContent = param.desc;
+                input.min = param.min;
+                input.max = param.max;
+                input.step = param.step || 1;
+                input.value = param.default;
+                value.textContent = param.step === 0.1 ? param.default.toFixed(1) : param.default;
+
+                // Update global variables
+                if (paramKey === 'param1') param1 = param.default;
+                else if (paramKey === 'param2') param2 = param.default;
+                else if (paramKey === 'param3') param3 = param.default;
+                else if (paramKey === 'param4') param4 = param.default;
+            });
+
+            // Update brush color
+            brushColor = config.color;
+            document.getElementById('brushColor').value = config.color;
+
+            // Show brush info briefly
+            const brushInfo = document.getElementById('brushInfo');
+            brushInfo.classList.add('visible');
+            setTimeout(() => brushInfo.classList.remove('visible'), 3000);
+        }
+
+        // Create strokes based on current brush
+        function createStroke(x, y) {
+            switch (currentBrush) {
+                case 'watercolor':
+                    createWatercolorStroke(x, y);
+                    break;
+                case 'crayon':
+                    createCrayonStroke(x, y);
+                    break;
+                case 'oil':
+                    createOilPaintStroke(x, y);
+                    break;
+                case 'pen':
+                    createPenStroke(x, y);
+                    break;
+                case 'marker':
+                    createMarkerStroke(x, y);
+                    break;
+                case 'rainbow':
+                    createRainbowStroke(x, y);
+                    break;
+                case 'wiggle':
+                    createWiggleStroke(x, y);
+                    break;
+                case 'spray':
+                    createSprayStroke(x, y);
+                    break;
+                case 'fountain':
+                    createFountainStroke(x, y);
+                    break;
+                case 'splatter':
+                    createSplatterStroke(x, y);
+                    break;
+                case 'toothpick':
+                    createToothpickStroke(x, y);
+                    break;
+            }
+        }
+
+        function createWatercolorStroke(x, y) {
+            const waterDropCount = Math.floor(brushSize * param1 * 0.3);
+            for (let i = 0; i < waterDropCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * brushSize;
+                const wx = x + Math.cos(angle) * radius;
+                const wy = y + Math.sin(angle) * radius;
+                const dropSize = 3 + Math.random() * 8;
+                waterDroplets.push(new WaterDroplet(wx, wy, dropSize, brushColor));
+            }
+        }
+
+        function createCrayonStroke(x, y) {
+            const patchCount = Math.floor(brushSize * 0.8);
+            for (let i = 0; i < patchCount; i++) {
+                if (Math.random() < 0.4 + (param4 * 0.05)) continue;
+                const angle = (Math.PI * 2 * i) / patchCount;
+                const radius = Math.random() * brushSize * 0.8;
+                const patchX = x + Math.cos(angle) * radius;
+                const patchY = y + Math.sin(angle) * radius;
+                const patchSize = (Math.random() * 3 + 1) * param1;
+                waxParticles.push(new WaxParticle(patchX, patchY, brushColor, patchSize));
+            }
+        }
+
+        function createOilPaintStroke(x, y) {
+            const strokePos = Math.min(1, strokeLength / (brushSize * 8));
+            brushLoad = Math.max(0.1, 1 - strokePos * 0.8);
+            const baseParticleCount = strokePos < 0.3 ?
+                Math.floor(param2 * 0.4) :
+                Math.floor(param2 * (1 + strokePos * 1.5));
+            const mainGlobCount = Math.floor(baseParticleCount * param1 * brushLoad);
+
+            for (let i = 0; i < mainGlobCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * brushSize * 0.5 * (strokePos < 0.3 ? 0.6 : 1.2);
+                const px = x + Math.cos(angle) * radius;
+                const py = y + Math.sin(angle) * radius;
+                const globSize = strokePos < 0.3 ?
+                    (Math.random() * 1.5 + 1) * param1 * brushLoad :
+                    (Math.random() * 2 + 0.5) * param1 * Math.max(0.2, brushLoad);
+                paintGlobs.push(new PaintGlob(px, py, brushColor, globSize, param1, strokePos));
+            }
+        }
+
+        function createPenStroke(x, y) {
+            if (isDrawing && dryLayer.width > 0 && dryLayer.height > 0) {
+                dryCtx.save();
+                dryCtx.strokeStyle = brushColor;
+                dryCtx.lineWidth = param1;
+                dryCtx.lineCap = 'round';
+                dryCtx.globalAlpha = param2 / 100;
+                dryCtx.beginPath();
+                dryCtx.moveTo(prevMouseX, prevMouseY);
+                dryCtx.lineTo(x, y);
+                dryCtx.stroke();
+                dryCtx.restore();
+            }
+        }
+
+        function createMarkerStroke(x, y) {
+            if (dryLayer.width > 0 && dryLayer.height > 0) {
+                const rgb = hexToRgb(brushColor);
+                if (rgb) {
+                    dryCtx.save();
+                    dryCtx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${param1 / 100})`;
+                    dryCtx.beginPath();
+                    dryCtx.arc(x, y, param2, 0, Math.PI * 2);
+                    dryCtx.fill();
+                    dryCtx.restore();
+                }
+            }
+        }
+
+        // Fixed Rainbow Brush - Using the working code from the first document
+        function createRainbowStroke(x, y) {
+            if (!isDrawing) return;
+
+            // Calculate hue that cycles through 0-360 (using param1 as speed)
+            const hue = (frameCount * param1) % 360;
+
+            // Create HSLA color string (using param3 as saturation, param4 as brightness)
+            const rainbowColor = `hsla(${hue}, ${param3}%, ${param4}%, 0.7)`;
+
+            // Calculate distance and midpoint
+            const distance = dist(x, y, prevMouseX, prevMouseY);
+            const midX = (x + prevMouseX) / 2;
+            const midY = (y + prevMouseY) / 2;
+
+            if (dryLayer.width > 0 && dryLayer.height > 0) {
+                // Set the fill color
+                dryCtx.fillStyle = rainbowColor;
+
+                // Draw the circle (using param2 as max size)
+                dryCtx.beginPath();
+                dryCtx.arc(midX, midY, Math.min(distance, param2) / 2, 0, Math.PI * 2);
+                dryCtx.fill();
+            }
+        }
+
+        function createWiggleStroke(x, y) {
+            if (isDrawing && dryLayer.width > 0 && dryLayer.height > 0) {
+                dryCtx.save();
+                dryCtx.strokeStyle = brushColor;
+                dryCtx.lineWidth = param1; // Line width
+                dryCtx.lineCap = 'round';
+                dryCtx.globalAlpha = 1.0;
+                dryCtx.fillStyle = 'transparent';
+
+                // Find the distance between current and previous mouse points
+                const distance = dist(x, y, prevMouseX, prevMouseY);
+
+                // Find the midpoint between current and previous mouse points
+                const midX = (x + prevMouseX) / 2;
+                const midY = (y + prevMouseY) / 2;
+
+                // Find the angle of the direction the mouse is moving in
+                const angle = Math.atan2(y - prevMouseY, x - prevMouseX);
+
+                // Find which way to flip the arc (alternating based on param2 frequency)
+                const flip = (frameCount % param2) * Math.PI;
+
+                // Draw the arc as a half circle (Canvas API uses different parameter order)
+                dryCtx.beginPath();
+                dryCtx.arc(midX, midY, distance / 2, angle + flip, angle + Math.PI + flip);
+                dryCtx.stroke();
+                dryCtx.restore();
+            }
+        }
+
+        function createSprayStroke(x, y) {
+            const sprayDensity = param1;
+            const baseRadius = param2;
+            const speedFactor = param3;
+            const opacity = param4 / 100;
+
+            const speed = Math.abs(x - prevMouseX) + Math.abs(y - prevMouseY);
+            const r = speed * speedFactor + baseRadius;
+            const rSquared = r * r;
+            const lerps = 6;
+
+            if (dryLayer.width > 0 && dryLayer.height > 0) {
+                for (let i = 0; i < lerps; i++) {
+                    const lerpX = lerp(prevMouseX, x, i / lerps);
+                    const lerpY = lerp(prevMouseY, y, i / lerps);
+
+                    for (let j = 0; j < sprayDensity; j++) {
+                        const randX = (Math.random() - 0.5) * r * 2;
+                        const randY = (Math.random() - 0.5) * Math.sqrt(Math.max(0, rSquared - randX * randX));
+
+                        dryCtx.save();
+                        dryCtx.fillStyle = brushColor;
+                        dryCtx.globalAlpha = opacity;
+                        dryCtx.beginPath();
+                        dryCtx.arc(lerpX + randX, lerpY + randY, 1, 0, Math.PI * 2);
+                        dryCtx.fill();
+                        dryCtx.restore();
+                    }
+                }
+            }
+        }
+
+        function createFountainStroke(x, y) {
+            if (isDrawing && dryLayer.width > 0 && dryLayer.height > 0) {
+                dryCtx.save();
+                dryCtx.strokeStyle = brushColor;
+                dryCtx.lineWidth = 1; // Always thin stroke weight like original
+                dryCtx.lineCap = 'round';
+                dryCtx.globalAlpha = param4 / 100; // Opacity
+
+                const width = param1; // Line width (controls the slant width)
+                const lerps = param2; // Number of lerps
+
+                // Repeat the slanted line with lerping
+                for (let i = 0; i <= lerps - 1; i++) {
+                    // Find the lerped x and y coordinates between the mouse points
+                    const lerpX = lerp(prevMouseX, x, i / lerps);
+                    const lerpY = lerp(prevMouseY, y, i / lerps);
+
+                    // Draw a slanted line
+                    dryCtx.beginPath();
+                    dryCtx.moveTo(lerpX - width, lerpY - width);
+                    dryCtx.lineTo(lerpX + width, lerpY + width);
+                    dryCtx.stroke();
+                }
+
+                dryCtx.restore();
+            }
+        }
+
+        function createSplatterStroke(x, y) {
+            if (isDrawing && dryLayer.width > 0 && dryLayer.height > 0) {
+                dryCtx.save();
+
+                // Use the selected brush color instead of dynamic colors
+                const rgb = hexToRgb(brushColor);
+                if (rgb) {
+                    dryCtx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${param4 / 255})`;
+                    dryCtx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${param4 / 255})`;
+                }
+                dryCtx.lineWidth = param1; // Point size
+                dryCtx.lineCap = 'round';
+
+                // Set the number of times we lerp the point
+                const lerps = param2;
+
+                // Repeat the point with lerping
+                for (let i = 0; i < lerps; i++) {
+                    // Find lerped x and y coordinates with the special splatter formula
+                    const lerpX = lerp(x, prevMouseX, i / lerps + param3);
+                    const lerpY = lerp(y, prevMouseY, i / lerps + param3);
+
+                    // Draw a point (small circle)
+                    dryCtx.beginPath();
+                    dryCtx.arc(lerpX, lerpY, param1 / 2, 0, Math.PI * 2);
+                    dryCtx.fill();
+                }
+
+                dryCtx.restore();
+            }
+        }
+
+        function createToothpickStroke(x, y) {
+            if (dryLayer.width > 0 && dryLayer.height > 0) {
+                dryCtx.save();
+
+                // Use the color picker color with opacity
+                const rgb = hexToRgb(brushColor);
+                if (rgb) {
+                    dryCtx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${param3 / 255})`;
+                }
+
+                // Move the origin to the current mouse point (translate)
+                dryCtx.translate(x, y);
+
+                // Find the angle of the direction the mouse is moving in
+                const angle = Math.atan2(y - prevMouseY, x - prevMouseX);
+
+                // Rotate the canvas by that angle
+                dryCtx.rotate(angle);
+
+                // Set minimum size and find distance
+                const minSize = param2; // Min Size parameter
+                const distance = dist(x, y, prevMouseX, prevMouseY);
+
+                // Draw the toothpick-shaped ellipse
+                const ellipseWidth = distance * param1 + minSize; // Width Multiplier parameter
+                const ellipseHeight = minSize;
+
+                dryCtx.beginPath();
+                dryCtx.ellipse(0, 0, ellipseWidth / 2, ellipseHeight / 2, 0, 0, Math.PI * 2);
+                dryCtx.fill();
+
+                dryCtx.restore();
+            }
+        }
+
+        function animate() {
+            frameCount++;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (dryLayer.width > 0 && dryLayer.height > 0) {
+                ctx.drawImage(dryLayer, 0, 0);
+            }
+
+            if (currentBrush === 'watercolor') {
+                wetCtx.clearRect(0, 0, wetLayer.width, wetLayer.height);
+            }
+
+            particles = particles.filter(p => p.update() ? (p.draw(), true) : false);
+            waterDroplets = waterDroplets.filter(d => d.update() ? (d.draw(), true) : false);
+            waxParticles = waxParticles.filter(w => w.update() ? (w.draw(), true) : false);
+            paintGlobs = paintGlobs.filter(g => g.update() ? (g.draw(), true) : false);
+
+            if (currentBrush === 'watercolor' && wetLayer.width > 0 && wetLayer.height > 0) {
+                ctx.drawImage(wetLayer, 0, 0);
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Mouse events
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            prevMouseX = mouseX;
+            prevMouseY = mouseY;
+            strokeLength = 0;
+            brushLoad = 1.0;
+            strokeHistory = [{x: mouseX, y: mouseY}];
+            createStroke(mouseX, mouseY);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            prevMouseX = mouseX;
+            prevMouseY = mouseY;
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+
+            if (isDrawing) {
+                const distance = Math.sqrt((mouseX - prevMouseX) ** 2 + (mouseY - prevMouseY) ** 2);
+                strokeLength += distance;
+                strokeHistory.push({x: mouseX, y: mouseY});
+
+                const steps = currentBrush === 'crayon' ?
+                    Math.max(1, Math.floor(distance / 8)) :
+                    Math.max(1, Math.floor(distance / 5));
+
+                for (let i = 0; i < steps; i++) {
+                    const t = i / steps;
+                    const x = prevMouseX + (mouseX - prevMouseX) * t;
+                    const y = prevMouseY + (mouseY - prevMouseY) * t;
+                    createStroke(x, y);
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+            strokeHistory = [];
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDrawing = false;
+            strokeHistory = [];
+        });
+
+        // Touch events
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            isDrawing = true;
+            mouseX = touch.clientX - rect.left;
+            mouseY = touch.clientY - rect.top;
+            prevMouseX = mouseX;
+            prevMouseY = mouseY;
+            strokeLength = 0;
+            brushLoad = 1.0;
+            strokeHistory = [{x: mouseX, y: mouseY}];
+            createStroke(mouseX, mouseY);
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            prevMouseX = mouseX;
+            prevMouseY = mouseY;
+            mouseX = touch.clientX - rect.left;
+            mouseY = touch.clientY - rect.top;
+
+            if (isDrawing) {
+                const distance = Math.sqrt((mouseX - prevMouseX) ** 2 + (mouseY - prevMouseY) ** 2);
+                strokeLength += distance;
+                strokeHistory.push({x: mouseX, y: mouseY});
+
+                const steps = currentBrush === 'crayon' ?
+                    Math.max(1, Math.floor(distance / 8)) :
+                    Math.max(1, Math.floor(distance / 5));
+
+                for (let i = 0; i < steps; i++) {
+                    const t = i / steps;
+                    const x = prevMouseX + (mouseX - prevMouseX) * t;
+                    const y = prevMouseY + (mouseY - prevMouseY) * t;
+                    createStroke(x, y);
+                }
+            }
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            isDrawing = false;
+            strokeHistory = [];
+        });
+
+        // Control updates
+        document.getElementById('brushSelector').addEventListener('change', (e) => {
+            switchBrush(e.target.value);
+        });
+
+        document.getElementById('brushSize').addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            document.getElementById('brushSizeValue').textContent = brushSize;
+        });
+
+        document.getElementById('param1').addEventListener('input', (e) => {
+            param1 = parseFloat(e.target.value);
+            document.getElementById('param1Value').textContent =
+                e.target.step === '0.1' ? param1.toFixed(1) : param1;
+        });
+
+        document.getElementById('param2').addEventListener('input', (e) => {
+            param2 = parseInt(e.target.value);
+            document.getElementById('param2Value').textContent = param2;
+        });
+
+        document.getElementById('param3').addEventListener('input', (e) => {
+            param3 = parseFloat(e.target.value);
+            document.getElementById('param3Value').textContent =
+                e.target.step === '0.1' ? param3.toFixed(1) : param3;
+        });
+
+        document.getElementById('param4').addEventListener('input', (e) => {
+            param4 = parseInt(e.target.value);
+            document.getElementById('param4Value').textContent = param4;
+        });
+
+        document.getElementById('brushColor').addEventListener('input', (e) => {
+            brushColor = e.target.value;
+        });
+
+        document.getElementById('clearCanvas').addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            wetCtx.clearRect(0, 0, wetLayer.width, wetLayer.height);
+            dryCtx.clearRect(0, 0, dryLayer.width, dryLayer.height);
+            particles = [];
+            waterDroplets = [];
+            waxParticles = [];
+            paintGlobs = [];
+            strokeHistory = [];
+        });
+
+        document.getElementById('saveCanvas').addEventListener('click', () => {
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+
+            tempCtx.fillStyle = '#ffffff';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+            if (dryLayer.width > 0 && dryLayer.height > 0) {
+                tempCtx.drawImage(dryLayer, 0, 0);
+            }
+
+            tempCtx.drawImage(canvas, 0, 0);
+
+            const link = document.createElement('a');
+            link.download = `painting_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+            link.href = tempCanvas.toDataURL('image/png');
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // Initialize with watercolor brush
+        switchBrush('watercolor');
+        animate();
+    </script>
+</body>
+</html>

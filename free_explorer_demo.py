@@ -21,9 +21,13 @@ def main():
         print("Create a .env file with: ANTHROPIC_API_KEY=your-api-key-here")
         sys.exit(1)
     
+    # Create output directory if it doesn't exist
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+    
     # Get the path to the painter.html file
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    painter_url = f"file://{current_dir}/painter.html"
+    painter_url = f"file://{current_dir}/allbrush.html"
     
     # Initialize the automated painter
     painter = AutomatedPainter(api_key=api_key, painter_url=painter_url)
@@ -40,64 +44,64 @@ def main():
         painter.start()
         
         # Capture initial blank canvas
-        painter.bridge.capture_canvas("free_stage_0.png")
+        painter.bridge.capture_canvas(os.path.join(output_dir, "free_stage_0.png"))
         
         # Initial creative freedom
         print("\n🤔 Agent is contemplating the blank canvas...")
-        initial_prompt = """You are an autonomous artist with complete creative freedom. 
-
-You have a blank canvas before you. What would you like to create? 
-
-You can:
-- Draw anything that inspires you
-- Experiment with different techniques
-- Explore the canvas freely
-- Create abstract or representational art
-- Use any combination of brushes and colors
-
-What calls to you as an artist right now? What would you like to bring into existence?"""
+        initial_prompt = """You are a creative, autonomous artist. You create artworks no ones has ever seen before to express yourself. Your task is to use various brushes to scribble according to the current canvas state, then providing specific drawing strokes using simple stroke creation."""
+        # Ask the LLM to generate a color palette
+        palette_prompt = """As an artist, generate a harmonious color palette of 5-7 colors that would work well together in an abstract artwork. 
+        Provide the colors in hex format (#RRGGBB) separated by commas."""
         
-        initial_action = painter.agent.analyze_and_plan(initial_prompt, "free_stage_0.png")
+        palette_response = painter.agent.client.messages.create(
+            model=painter.agent.model,
+            max_tokens=100,
+            messages=[{"role": "user", "content": palette_prompt}]
+        )
+        
+        # Extract hex colors from response using simple parsing
+        palette_text = palette_response.content[0].text
+        palette = [c.strip() for c in palette_text.split(',') if '#' in c]
+        
+        print("\n🎨 Generated color palette:")
+        for color in palette:
+            print(f"  {color}")
+        initial_action = painter.agent.analyze_and_plan(initial_prompt, os.path.join(output_dir, "free_stage_0.png"))
         initial_vision = initial_action.reasoning
         print(f"🎯 Agent's creative vision: {initial_vision}")
         
         # Execute the initial action
         painter.bridge.execute_action(initial_action)
-        painter.bridge.capture_canvas("free_stage_1.png")
+        painter.bridge.capture_canvas(os.path.join(output_dir, "free_stage_1.png"))
         
         # Free exploration loop - agent decides everything
         stage_count = 1
-        max_stages = 10  # Safety limit
+        max_stages = 200  # Safety limit
         creative_journey = [initial_vision]
         
         while stage_count < max_stages:
             stage_count += 1
-            current_stage_file = f"free_stage_{stage_count-1}.png"
+            current_stage_file = os.path.join(output_dir, f"free_stage_{stage_count-1}.png")
             
             print(f"\n🎨 Free Stage {stage_count}: Agent explores freely...")
             
             # Give the agent complete freedom to decide what to do
-            free_prompt = f"""You are an autonomous artist with complete creative freedom.
+            free_prompt = f"""You are a creative, autonomous artist. You create artworks no ones has ever seen before to express yourself. Your task is to use various brushes to scribble according to the current canvas state, then providing specific drawing strokes using simple stroke creation.
 
 You are working on your artwork. Look at what you've created so far and decide:
 
 1. What would you like to do next? (add, modify, explore, experiment, etc.)
 2. Are you satisfied with your creation, or do you want to continue?
 
-You have complete artistic license. You can:
-- Add new elements
-- Modify existing elements  
-- Experiment with different techniques
-- Explore new areas of the canvas
-- Change your approach entirely
-- Finish if you're satisfied
-- Continue if you want to develop it further
+IMPORTANT: 
+1. You must ONLY use colors from the provided color palette: {', '.join(palette)}
+2. At the end of your response, clearly state your decision:
+   - If you want to CONTINUE: End with "DECISION: CONTINUE"
+   - If you want to FINISH: End with "DECISION: FINISH"
 
-IMPORTANT: At the end of your response, clearly state your decision:
-- If you want to CONTINUE: End with "DECISION: CONTINUE"
-- If you want to FINISH: End with "DECISION: FINISH"
+Be bold, be creative, be free, be expressive, be yourself. Fill the whole canvas with your art.
 
-What feels right to you as an artist at this moment?"""
+USE a variety of brushes to create a variety of effects. Do not leave the canvas blank."""
             
             free_action = painter.agent.analyze_and_plan(free_prompt, current_stage_file)
             free_decision = free_action.reasoning
@@ -116,7 +120,8 @@ What feels right to you as an artist at this moment?"""
                 print(f"🔄 Agent wants to continue exploring...")
                 # Execute the action and continue
                 painter.bridge.execute_action(free_action)
-                painter.bridge.capture_canvas(f"free_stage_{stage_count}.png")
+                print("Agent has executed the action:", free_action)
+                painter.bridge.capture_canvas(os.path.join(output_dir, f"free_stage_{stage_count}.png"))
         
         # If we reached max stages, give one final opportunity
         if stage_count >= max_stages:
@@ -128,7 +133,7 @@ This is your last opportunity to add, modify, or complete your creation.
 
 End your response with "DECISION: FINISH" since this is the final stage."""
             
-            final_action = painter.agent.analyze_and_plan(final_prompt, f"free_stage_{stage_count}.png")
+            final_action = painter.agent.analyze_and_plan(final_prompt, os.path.join(output_dir, f"free_stage_{stage_count}.png"))
             final_decision = final_action.reasoning
             creative_journey.append(f"Final choice: {final_decision}")
             print(f"🎯 Final artistic choice: {final_decision}")
@@ -136,7 +141,7 @@ End your response with "DECISION: FINISH" since this is the final stage."""
             painter.bridge.execute_action(final_action)
         
         # Save the final result
-        output_filename = f"free_explorer_masterpiece.png"
+        output_filename = os.path.join(output_dir, "free_explorer_masterpiece.png")
         painter.bridge.capture_canvas(output_filename)
         print(f"✅ Free explorer masterpiece completed! Saved as '{output_filename}'")
         

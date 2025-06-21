@@ -1,0 +1,12 @@
+{
+  "brush": "wiggle",
+  "strokes": [
+    {
+      "x": [300, 400, 500, 600, 650],
+      "y": [450, 400, 380, 400, 450],
+      "t": [4, 4, 4, 4],
+      "description": "playful wave below"
+    }
+  ],
+  "reasoning": "Adding a whimsical wiggling line beneath the colorful dots to create a sense of movement and flow"
+}
