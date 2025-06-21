@@ -136,7 +136,7 @@
         }
 
         #canvas {
-            background: #ffffff;
+            background: #FFF9E3 !important;
             cursor: crosshair;
             flex: 1;
         }
@@ -173,6 +173,11 @@
             --value-color: #000000;
         }
 
+        .marker-theme {
+            --thumb-color: #ff7700;
+            --value-color: #ff7700;
+        }
+
         .rainbow-theme {
             --thumb-color: #ff6b6b;
             --value-color: #ff6b6b;
@@ -188,9 +193,9 @@
             --value-color: #000000;
         }
 
-        .fountain-theme {
-            --thumb-color: #000000;
-            --value-color: #000000;
+        .toothpick-theme {
+            --thumb-color: #3cb446;
+            --value-color: #3cb446;
         }
 
         .brush-info {
@@ -210,6 +215,10 @@
         .brush-info.visible {
             opacity: 1;
         }
+
+        canvas, #canvas, .canvas-container, .canvas-wrapper {
+            background: #FFF9E3 !important;
+        }
     </style>
 </head>
 <body>
@@ -221,11 +230,14 @@
                 <option value="watercolor">Watercolor</option>
                 <option value="crayon">Crayon</option>
                 <option value="oil">Oil Paint</option>
+                <option value="pen">Pen</option>
                 <option value="marker">Marker</option>
                 <option value="rainbow">Rainbow</option>
                 <option value="wiggle">Wiggle</option>
                 <option value="spray">Spray</option>
                 <option value="fountain">Fountain</option>
+                <option value="splatter">Splatter</option>
+                <option value="toothpick">Toothpick</option>
             </select>
         </div>
 
@@ -327,6 +339,15 @@
         let strokeLength = 0;
         let brushLoad = 1.0;
 
+        // Math utilities
+        function lerp(start, end, amt) {
+            return (1 - amt) * start + amt * end;
+        }
+
+        function dist(x1, y1, x2, y2) {
+            return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        }
+
         // Brush configurations
         const brushConfigs = {
             flowing: {
@@ -377,27 +398,39 @@
                 },
                 color: '#8b4513'
             },
-            marker: {
-                name: 'Marker Brush',
-                description: 'Textured marker with natural gaps and paper interaction.',
+            pen: {
+                name: 'Pen Brush',
+                description: 'Clean, precise pen lines with consistent flow.',
                 theme: 'pen-theme',
                 params: {
-                    param1: { label: 'Pressure', desc: 'Marker density', min: 0.1, max: 2, step: 0.1, default: 1.0 },
-                    param2: { label: 'Texture Strength', desc: 'Marker intensity', min: 5, max: 30, step: 1, default: 15 },
-                    param3: { label: 'Grain Size', desc: 'Marker size', min: 0.1, max: 2, step: 0.1, default: 1.0 },
-                    param4: { label: 'Paper Roughness', desc: 'Surface texture', min: 0, max: 10, step: 1, default: 4 }
+                    param1: { label: 'Line Width', desc: 'Pen thickness', min: 1, max: 10, step: 1, default: 2 },
+                    param2: { label: 'Opacity', desc: 'Ink opacity', min: 50, max: 100, step: 5, default: 100 },
+                    param3: { label: 'Smoothness', desc: 'Line smoothness', min: 0.1, max: 2, step: 0.1, default: 1.0 },
+                    param4: { label: 'Flow Rate', desc: 'Ink flow', min: 0, max: 10, step: 1, default: 1 }
                 },
                 color: '#000000'
+            },
+            marker: {
+                name: 'Marker Brush',
+                description: 'Broad marker strokes with semi-transparent blending.',
+                theme: 'marker-theme',
+                params: {
+                    param1: { label: 'Opacity', desc: 'Marker transparency', min: 10, max: 100, step: 5, default: 40 },
+                    param2: { label: 'Size', desc: 'Marker width', min: 20, max: 80, step: 5, default: 50 },
+                    param3: { label: 'Blending', desc: 'Color blending', min: 0.1, max: 2, step: 0.1, default: 1.0 },
+                    param4: { label: 'Texture', desc: 'Surface texture', min: 0, max: 10, step: 1, default: 2 }
+                },
+                color: '#ff7700'
             },
             rainbow: {
                 name: 'Rainbow Brush',
                 description: 'Dynamic rainbow colors that change as you draw with flowing effects.',
                 theme: 'rainbow-theme',
                 params: {
-                    param1: { label: 'Color Speed', desc: 'Color change rate', min: 0.1, max: 5, step: 0.1, default: 2.0 },
-                    param2: { label: 'Bead Size', desc: 'Rainbow bead size', min: 5, max: 50, step: 1, default: 20 },
-                    param3: { label: 'Saturation', desc: 'Color intensity', min: 0.1, max: 2, step: 0.1, default: 1.0 },
-                    param4: { label: 'Brightness', desc: 'Color brightness', min: 0.1, max: 2, step: 0.1, default: 1.0 }
+                    param1: { label: 'Speed', desc: 'Color change rate', min: 1, max: 20, step: 1, default: 5 },
+                    param2: { label: 'Max Size', desc: 'Maximum brush size', min: 10, max: 100, step: 1, default: 50 },
+                    param3: { label: 'Saturation', desc: 'Color intensity', min: 30, max: 100, step: 5, default: 80 },
+                    param4: { label: 'Brightness', desc: 'Color brightness', min: 30, max: 90, step: 5, default: 60 }
                 },
                 color: '#ff6b6b'
             },
@@ -406,10 +439,10 @@
                 description: 'Playful wiggling lines with dynamic curves and organic movement.',
                 theme: 'wiggle-theme',
                 params: {
-                    param1: { label: 'Wiggle Amount', desc: 'Curve intensity', min: 0.1, max: 3, step: 0.1, default: 1.5 },
-                    param2: { label: 'Frequency', desc: 'Wiggle frequency', min: 1, max: 20, step: 1, default: 10 },
+                    param1: { label: 'Line Width', desc: 'Stroke thickness', min: 1, max: 10, step: 1, default: 3 },
+                    param2: { label: 'Arc Frequency', desc: 'Wiggle frequency', min: 1, max: 10, step: 1, default: 2 },
                     param3: { label: 'Smoothness', desc: 'Line smoothness', min: 0.1, max: 2, step: 0.1, default: 1.0 },
-                    param4: { label: 'Thickness', desc: 'Line thickness', min: 1, max: 10, step: 1, default: 3 }
+                    param4: { label: 'Color', desc: 'Base color', min: 0, max: 10, step: 1, default: 5 }
                 },
                 color: '#ff7800'
             },
@@ -418,76 +451,50 @@
                 description: 'Spray paint effect with particle dispersion and texture.',
                 theme: 'spray-theme',
                 params: {
-                    param1: { label: 'Spray Density', desc: 'Particle density', min: 10, max: 100, step: 5, default: 40 },
-                    param2: { label: 'Spray Radius', desc: 'Spray area size', min: 5, max: 50, step: 1, default: 20 },
-                    param3: { label: 'Speed Factor', desc: 'Movement sensitivity', min: 0.1, max: 3, step: 0.1, default: 1.0 },
-                    param4: { label: 'Opacity', desc: 'Spray opacity', min: 0.1, max: 1, step: 0.1, default: 0.7 }
+                    param1: { label: 'Spray Density', desc: 'Particle density', min: 10, max: 80, step: 5, default: 40 },
+                    param2: { label: 'Spray Radius', desc: 'Base spray size', min: 8, max: 30, step: 1, default: 15 },
+                    param3: { label: 'Speed Factor', desc: 'Movement sensitivity', min: 0.5, max: 3, step: 0.1, default: 1.0 },
+                    param4: { label: 'Opacity', desc: 'Spray opacity', min: 50, max: 100, step: 5, default: 80 }
                 },
                 color: '#000000'
             },
             fountain: {
                 name: 'Fountain Brush',
-                description: 'Fountain pen with smooth, flowing lines and natural ink flow.',
+                description: 'Fountain pen with diagonal slanted lines and smooth ink flow.',
                 theme: 'fountain-theme',
                 params: {
-                    param1: { label: 'Line Width', desc: 'Pen width', min: 1, max: 10, step: 1, default: 4 },
-                    param2: { label: 'Flow Rate', desc: 'Ink flow speed', min: 1, max: 20, step: 1, default: 12 },
+                    param1: { label: 'Line Width', desc: 'Slant width', min: 1, max: 10, step: 1, default: 5 },
+                    param2: { label: 'Flow Rate', desc: 'Number of lerps', min: 8, max: 24, step: 1, default: 16 },
                     param3: { label: 'Smoothness', desc: 'Line smoothness', min: 0.1, max: 2, step: 0.1, default: 1.0 },
-                    param4: { label: 'Opacity', desc: 'Ink opacity', min: 0.1, max: 1, step: 0.1, default: 1.0 }
+                    param4: { label: 'Opacity', desc: 'Ink opacity', min: 70, max: 100, step: 5, default: 100 }
                 },
                 color: '#000000'
+            },
+            splatter: {
+                name: 'Splatter Brush',
+                description: 'Dynamic splatter effect with colorful lerped points creating organic spray patterns.',
+                theme: 'splatter-theme',
+                params: {
+                    param1: { label: 'Point Size', desc: 'Splatter dot size', min: 1, max: 10, step: 1, default: 4 },
+                    param2: { label: 'Lerp Count', desc: 'Number of points', min: 4, max: 16, step: 1, default: 8 },
+                    param3: { label: 'Shift Amount', desc: 'Splatter spread', min: 1, max: 20, step: 1, default: 8 },
+                    param4: { label: 'Opacity', desc: 'Point opacity', min: 50, max: 255, step: 5, default: 160 }
+                },
+                color: '#ff00ff'
+            },
+            toothpick: {
+                name: 'Toothpick Brush',
+                description: 'Directional elliptical brush that rotates with mouse movement, creating natural organic strokes.',
+                theme: 'toothpick-theme',
+                params: {
+                    param1: { label: 'Width Multiplier', desc: 'Ellipse length', min: 2, max: 18, step: 1, default: 2 },
+                    param2: { label: 'Min Size', desc: 'Ellipse height', min: 2, max: 12, step: 1, default: 4 },
+                    param3: { label: 'Opacity', desc: 'Brush opacity', min: 50, max: 255, step: 5, default: 150 },
+                    param4: { label: 'Unused', desc: 'Not used', min: 0, max: 10, step: 1, default: 0 }
+                },
+                color: '#3cb446'
             }
         };
-
-        // Switch brush type
-        function switchBrush(brushType) {
-            currentBrush = brushType;
-            const config = brushConfigs[brushType];
-
-            // Clear all particles
-            particles = [];
-            waterDroplets = [];
-            pigmentParticles = [];
-            waxParticles = [];
-            paintGlobs = [];
-
-            // Update theme
-            const controls = document.getElementById('controls');
-            controls.className = `controls ${config.theme}`;
-
-            // Update brush info
-            document.getElementById('brushName').textContent = config.name;
-            document.getElementById('brushDescription').textContent = config.description;
-
-            // Update parameter labels and settings
-            Object.keys(config.params).forEach(paramKey => {
-                const param = config.params[paramKey];
-                const input = document.getElementById(paramKey);
-                const label = document.getElementById(`${paramKey}Label`);
-                const desc = document.getElementById(`${paramKey}Desc`);
-                const value = document.getElementById(`${paramKey}Value`);
-
-                label.textContent = param.label;
-                desc.textContent = param.desc;
-                input.min = param.min;
-                input.max = param.max;
-                input.step = param.step || 1;
-                input.value = param.default;
-                value.textContent = param.step === 0.1 ? param.default.toFixed(1) : param.default;
-
-                // Update global variables
-                window[paramKey] = param.default;
-            });
-
-            // Update brush color
-            brushColor = config.color;
-            document.getElementById('brushColor').value = config.color;
-
-            // Show brush info briefly
-            const brushInfo = document.getElementById('brushInfo');
-            brushInfo.classList.add('visible');
-            setTimeout(() => brushInfo.classList.remove('visible'), 3000);
-        }
 
         // Convert hex to RGB
         function hexToRgb(hex) {
@@ -517,7 +524,6 @@
             }
 
             update() {
-                // Add current position to trail
                 this.trail.push({x: this.x, y: this.y, life: this.life});
                 if (this.trail.length > this.maxTrailLength) {
                     this.trail.shift();
@@ -536,7 +542,6 @@
             }
 
             draw() {
-                // Draw trail on permanent canvas (dry layer)
                 if (dryLayer.width > 0 && dryLayer.height > 0) {
                     for (let i = 0; i < this.trail.length; i++) {
                         const point = this.trail[i];
@@ -552,7 +557,6 @@
                         dryCtx.restore();
                     }
 
-                    // Draw permanent mark when particle is fresh
                     if (this.life > 0.8) {
                         dryCtx.save();
                         dryCtx.globalAlpha = 0.6;
@@ -564,7 +568,6 @@
                     }
                 }
 
-                // Draw glowing particle on main canvas (temporary effect)
                 ctx.save();
                 ctx.globalAlpha = this.life * 0.8;
                 ctx.fillStyle = this.color;
@@ -592,7 +595,6 @@
                 this.spread = 0;
                 this.maxSpread = param1 * 20;
                 this.absorbed = false;
-                this.permanentMarks = [];
             }
 
             update() {
@@ -610,7 +612,6 @@
                 this.life -= this.evaporation;
                 this.opacity *= 0.998;
 
-                // Create permanent bleeding marks as the droplet moves
                 if (this.spread > 2 && !this.absorbed) {
                     this.createPermanentMark();
                 }
@@ -699,7 +700,6 @@
             draw() {
                 if (this.paperSkip) return;
 
-                // Draw on permanent layer (dry layer) for consistency
                 if (dryLayer.width > 0 && dryLayer.height > 0) {
                     dryCtx.save();
                     dryCtx.globalAlpha = this.opacity * this.life;
@@ -710,7 +710,6 @@
                     dryCtx.restore();
                 }
 
-                // Also draw temporary effect on main canvas
                 ctx.save();
                 ctx.globalAlpha = this.opacity * this.life * 0.3;
                 ctx.fillStyle = this.color;
@@ -768,7 +767,6 @@
                 const rgb = hexToRgb(this.color);
                 if (!rgb) return;
 
-                // Draw on permanent layer (dry layer) for consistency
                 if (dryLayer.width > 0 && dryLayer.height > 0) {
                     dryCtx.save();
                     dryCtx.globalAlpha = this.opacity;
@@ -779,7 +777,6 @@
                     dryCtx.restore();
                 }
 
-                // Also draw temporary glow effect on main canvas
                 ctx.save();
                 ctx.globalAlpha = this.opacity * 0.3;
                 ctx.fillStyle = this.color;
@@ -790,6 +787,56 @@
                 ctx.fill();
                 ctx.restore();
             }
+        }
+
+        // Switch brush type
+        function switchBrush(brushType) {
+            currentBrush = brushType;
+            const config = brushConfigs[brushType];
+
+            // Clear all particles
+            particles = [];
+            waterDroplets = [];
+            pigmentParticles = [];
+            waxParticles = [];
+            paintGlobs = [];
+
+            // Update theme
+            const controls = document.getElementById('controls');
+            controls.className = `controls ${config.theme}`;
+
+            // Update brush info
+            document.getElementById('brushName').textContent = config.name;
+            document.getElementById('brushDescription').textContent = config.description;
+
+            // Update parameter labels and settings
+            Object.keys(config.params).forEach(paramKey => {
+                const param = config.params[paramKey];
+                const input = document.getElementById(paramKey);
+                const label = document.getElementById(`${paramKey}Label`);
+                const desc = document.getElementById(`${paramKey}Desc`);
+                const value = document.getElementById(`${paramKey}Value`);
+
+                label.textContent = param.label;
+                desc.textContent = param.desc;
+                input.min = param.min;
+                input.max = param.max;
+                input.step = param.step || 1;
+                input.value = param.default;
+                value.textContent = param.step === 0.1 ? param.default.toFixed(1) : param.default;
+
+                // Update global variables
+                window[paramKey] = param.default;
+            });
+
+            // Update brush color
+            brushColor = config.color;
+            document.getElementById('brushColor').value = config.color;
+
+            // Show brush info briefly
+            const brushInfo = document.getElementById('brushInfo');
+            brushInfo.classList.add('visible');
+            setTimeout(() => brushInfo.classList.remove('visible'), 3000);
         }
 
         // Create strokes based on current brush
@@ -807,6 +854,9 @@
                 case 'oil':
                     createOilPaintStroke(x, y);
                     break;
+                case 'pen':
+                    createPenStroke(x, y);
+                    break;
                 case 'marker':
                     createMarkerStroke(x, y);
                     break;
@@ -822,6 +872,12 @@
                 case 'fountain':
                     createFountainStroke(x, y);
                     break;
+                case 'splatter':
+                    createSplatterStroke(x, y);
+                    break;
+                case 'toothpick':
+                    createToothpickStroke(x, y);
+                    break;
             }
         }
 
@@ -835,7 +891,6 @@
                 particles.push(new FlowingParticle(px, py, brushColor));
             }
 
-            // Create brush stroke connecting effect on permanent layer
             if (isDrawing && dryLayer.width > 0 && dryLayer.height > 0) {
                 dryCtx.save();
                 dryCtx.globalAlpha = 0.3;
@@ -887,166 +942,121 @@
 
             for (let i = 0; i < mainGlobCount; i++) {
                 const angle = Math.random() * Math.PI * 2;
-                const radius = Math.random() * brushSize * (strokePos < 0.3 ? 0.6 : 1.2);
+                const radius = Math.random() * brushSize * 0.5 * (strokePos < 0.3 ? 0.6 : 1.2);
                 const px = x + Math.cos(angle) * radius;
                 const py = y + Math.sin(angle) * radius;
                 const globSize = strokePos < 0.3 ?
-                    (Math.random() * 2 + 3) * param1 * brushLoad :
-                    (Math.random() * 4 + 1) * param1 * Math.max(0.2, brushLoad);
+                    (Math.random() * 1.5 + 1) * param1 * brushLoad :
+                    (Math.random() * 2 + 0.5) * param1 * Math.max(0.2, brushLoad);
                 paintGlobs.push(new PaintGlob(px, py, brushColor, globSize, param1, strokePos));
             }
         }
 
-        function createMarkerStroke(x, y) {
-            // Marker brush with textured application based on SuperHi techniques
-            const markerSize = brushSize * param3; // Grain size
-            const markerCount = Math.floor(param2 * 0.5); // Texture strength
-
-            // Use lerping for smoother marker strokes like in the SuperHi guide
-            const lerps = 8;
-
-            for (let i = 0; i < lerps; i++) {
-                const t = i / lerps;
-                const lerpX = prevMouseX + (x - prevMouseX) * t;
-                const lerpY = prevMouseY + (y - prevMouseY) * t;
-
-                for (let j = 0; j < markerCount; j++) {
-                    // Add paper roughness effect like in the guide
-                    if (Math.random() < 0.3 + (param4 * 0.05)) continue;
-
-                    const angle = Math.random() * Math.PI * 2;
-                    const radius = Math.random() * markerSize;
-                    const markerX = lerpX + Math.cos(angle) * radius;
-                    const markerY = lerpY + Math.sin(angle) * radius;
-                    const size = (Math.random() * 3 + 2) * param1; // Pressure affects size
-
-                    if (dryLayer.width > 0 && dryLayer.height > 0) {
-                        dryCtx.save();
-                        dryCtx.fillStyle = brushColor;
-                        dryCtx.globalAlpha = 0.4;
-                        dryCtx.beginPath();
-                        dryCtx.arc(markerX, markerY, size, 0, Math.PI * 2);
-                        dryCtx.fill();
-                        dryCtx.restore();
-                    }
-                }
-            }
-        }
-
-        function createRainbowStroke(x, y) {
-            // Dynamic rainbow colors that change as you draw with proper circle effects
-            const hue = (frameCount * param1 * 10) % 360; // Color speed
-            const saturation = Math.min(100, 70 * param3); // Saturation (0-100)
-            const brightness = Math.min(100, 90 * param4); // Brightness (0-100)
-
-            // Convert HSL to RGB for proper color display
-            const h = hue / 360;
-            const s = saturation / 100;
-            const l = brightness / 100;
-
-            let r, g, b;
-
-            if (s === 0) {
-                r = g = b = l; // achromatic
-            } else {
-                const hue2rgb = (p, q, t) => {
-                    if (t < 0) t += 1;
-                    if (t > 1) t -= 1;
-                    if (t < 1/6) return p + (q - p) * 6 * t;
-                    if (t < 1/2) return q;
-                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-                    return p;
-                };
-
-                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-                const p = 2 * l - q;
-                r = hue2rgb(p, q, h + 1/3);
-                g = hue2rgb(p, q, h);
-                b = hue2rgb(p, q, h - 1/3);
-            }
-
-            const rainbowColor = `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, 0.6)`;
-
+        function createPenStroke(x, y) {
             if (isDrawing && dryLayer.width > 0 && dryLayer.height > 0) {
                 dryCtx.save();
-                dryCtx.fillStyle = rainbowColor;
-                dryCtx.globalAlpha = 0.6;
-
-                // Find the distance between current and previous mouse points like in SuperHi guide
-                const distance = Math.sqrt((x - prevMouseX) ** 2 + (y - prevMouseY) ** 2);
-                // Find the midpoint between current and previous mouse points
-                const midX = (x + prevMouseX) / 2;
-                const midY = (y + prevMouseY) / 2;
-
-                // Create rainbow circles/beads using the distance
-                const beadSize = param2; // Bead size
+                dryCtx.strokeStyle = brushColor;
+                dryCtx.lineWidth = param1;
+                dryCtx.lineCap = 'round';
+                dryCtx.globalAlpha = param2 / 100;
                 dryCtx.beginPath();
-                dryCtx.arc(midX, midY, Math.min(distance, beadSize), 0, Math.PI * 2);
-                dryCtx.fill();
+                dryCtx.moveTo(prevMouseX, prevMouseY);
+                dryCtx.lineTo(x, y);
+                dryCtx.stroke();
                 dryCtx.restore();
             }
         }
 
+        function createMarkerStroke(x, y) {
+            if (dryLayer.width > 0 && dryLayer.height > 0) {
+                const rgb = hexToRgb(brushColor);
+                if (rgb) {
+                    dryCtx.save();
+                    dryCtx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${param1 / 100})`;
+                    dryCtx.beginPath();
+                    dryCtx.arc(x, y, param2, 0, Math.PI * 2);
+                    dryCtx.fill();
+                    dryCtx.restore();
+                }
+            }
+        }
+
+        // Fixed Rainbow Brush - Using the working code from the first document
+        function createRainbowStroke(x, y) {
+            if (!isDrawing) return;
+
+            // Calculate hue that cycles through 0-360 (using param1 as speed)
+            const hue = (frameCount * param1) % 360;
+
+            // Create HSLA color string (using param3 as saturation, param4 as brightness)
+            const rainbowColor = `hsla(${hue}, ${param3}%, ${param4}%, 0.7)`;
+
+            // Calculate distance and midpoint
+            const distance = dist(x, y, prevMouseX, prevMouseY);
+            const midX = (x + prevMouseX) / 2;
+            const midY = (y + prevMouseY) / 2;
+
+            if (dryLayer.width > 0 && dryLayer.height > 0) {
+                // Set the fill color
+                dryCtx.fillStyle = rainbowColor;
+
+                // Draw the circle (using param2 as max size)
+                dryCtx.beginPath();
+                dryCtx.arc(midX, midY, Math.min(distance, param2) / 2, 0, Math.PI * 2);
+                dryCtx.fill();
+            }
+        }
+
         function createWiggleStroke(x, y) {
-            // Playful wiggling lines with dynamic curves based on SuperHi techniques
             if (isDrawing && dryLayer.width > 0 && dryLayer.height > 0) {
                 dryCtx.save();
                 dryCtx.strokeStyle = brushColor;
-                dryCtx.lineWidth = param4; // Thickness
+                dryCtx.lineWidth = param1; // Line width
                 dryCtx.lineCap = 'round';
                 dryCtx.globalAlpha = 1.0;
+                dryCtx.fillStyle = 'transparent';
 
                 // Find the distance between current and previous mouse points
-                const distance = Math.sqrt((x - prevMouseX) ** 2 + (y - prevMouseY) ** 2);
+                const distance = dist(x, y, prevMouseX, prevMouseY);
+
+                // Find the midpoint between current and previous mouse points
                 const midX = (x + prevMouseX) / 2;
                 const midY = (y + prevMouseY) / 2;
 
                 // Find the angle of the direction the mouse is moving in
                 const angle = Math.atan2(y - prevMouseY, x - prevMouseX);
-                const wiggleAmount = param1; // Wiggle amount
-                const frequency = param2; // Frequency
 
-                // Use state-based flipping like in the SuperHi guide
-                const flip = (frameCount % 2) * Math.PI;
+                // Find which way to flip the arc (alternating based on param2 frequency)
+                const flip = (frameCount % param2) * Math.PI;
 
+                // Draw the arc as a half circle (Canvas API uses different parameter order)
                 dryCtx.beginPath();
-                dryCtx.arc(midX, midY, distance, angle + flip, angle + Math.PI + flip);
+                dryCtx.arc(midX, midY, distance / 2, angle + flip, angle + Math.PI + flip);
                 dryCtx.stroke();
                 dryCtx.restore();
             }
         }
 
         function createSprayStroke(x, y) {
-            // Spray paint effect with particle dispersion based on SuperHi techniques
-            const sprayDensity = param1; // Spray density
-            const sprayRadius = param2; // Spray radius
-            const speedFactor = param3; // Speed factor
-            const opacity = param4; // Opacity
+            const sprayDensity = param1;
+            const baseRadius = param2;
+            const speedFactor = param3;
+            const opacity = param4 / 100;
 
-            // Find the speed of the mouse movement like in the SuperHi guide
             const speed = Math.abs(x - prevMouseX) + Math.abs(y - prevMouseY);
-
-            // Set minimum radius and calculate actual radius
-            const minRadius = 8;
-            const r = speed * speedFactor + minRadius;
+            const r = speed * speedFactor + baseRadius;
             const rSquared = r * r;
-
-            // Set the number of times we lerp the points like in the guide
             const lerps = 6;
 
-            // Repeat the random points with lerping
-            for (let i = 0; i < lerps; i++) {
-                // Find the lerped X and Y coordinates
-                const lerpX = prevMouseX + (x - prevMouseX) * (i / lerps);
-                const lerpY = prevMouseY + (y - prevMouseY) * (i / lerps);
+            if (dryLayer.width > 0 && dryLayer.height > 0) {
+                for (let i = 0; i < lerps; i++) {
+                    const lerpX = lerp(prevMouseX, x, i / lerps);
+                    const lerpY = lerp(prevMouseY, y, i / lerps);
 
-                // Draw random points within a circle using SuperHi technique
-                for (let j = 0; j < sprayDensity; j++) {
-                    // Pick a random position within the circle using the guide's formula
-                    const randX = (Math.random() - 0.5) * r * 2;
-                    const randY = (Math.random() - 0.5) * Math.sqrt(rSquared - randX * randX);
+                    for (let j = 0; j < sprayDensity; j++) {
+                        const randX = (Math.random() - 0.5) * r * 2;
+                        const randY = (Math.random() - 0.5) * Math.sqrt(Math.max(0, rSquared - randX * randX));
 
-                    if (dryLayer.width > 0 && dryLayer.height > 0) {
                         dryCtx.save();
                         dryCtx.fillStyle = brushColor;
                         dryCtx.globalAlpha = opacity;
@@ -1060,61 +1070,116 @@
         }
 
         function createFountainStroke(x, y) {
-            // Fountain pen with smooth, flowing lines based on SuperHi techniques
-            const lineWidth = param1; // Line width
-            const flowRate = param2; // Flow rate
-            const smoothness = param3; // Smoothness
-            const opacity = param4; // Opacity
-
             if (isDrawing && dryLayer.width > 0 && dryLayer.height > 0) {
                 dryCtx.save();
                 dryCtx.strokeStyle = brushColor;
-                dryCtx.lineWidth = lineWidth;
+                dryCtx.lineWidth = 1; // Always thin stroke weight like original
                 dryCtx.lineCap = 'round';
-                dryCtx.globalAlpha = opacity;
+                dryCtx.globalAlpha = param4 / 100; // Opacity
 
-                // Use lerping for smoother fountain pen strokes like in the SuperHi guide
-                const lerps = Math.floor(flowRate);
+                const width = param1; // Line width (controls the slant width)
+                const lerps = param2; // Number of lerps
 
-                for (let i = 0; i < lerps; i++) {
-                    const t = i / lerps;
-                    const strokeX = prevMouseX + (x - prevMouseX) * t;
-                    const strokeY = prevMouseY + (y - prevMouseY) * t;
+                // Repeat the slanted line with lerping
+                for (let i = 0; i <= lerps - 1; i++) {
+                    // Find the lerped x and y coordinates between the mouse points
+                    const lerpX = lerp(prevMouseX, x, i / lerps);
+                    const lerpY = lerp(prevMouseY, y, i / lerps);
 
-                    // Draw diagonal lines for fountain pen effect like in the guide
+                    // Draw a slanted line
                     dryCtx.beginPath();
-                    dryCtx.moveTo(strokeX - lineWidth * 0.5, strokeY - lineWidth * 0.5);
-                    dryCtx.lineTo(strokeX + lineWidth * 0.5, strokeY + lineWidth * 0.5);
+                    dryCtx.moveTo(lerpX - width, lerpY - width);
+                    dryCtx.lineTo(lerpX + width, lerpY + width);
                     dryCtx.stroke();
                 }
+
+                dryCtx.restore();
+            }
+        }
+
+        function createSplatterStroke(x, y) {
+            if (isDrawing && dryLayer.width > 0 && dryLayer.height > 0) {
+                dryCtx.save();
+
+                // Set dynamic color based on frameCount (like the original)
+                const hue = frameCount % 255;
+                dryCtx.strokeStyle = `hsla(${hue}, 80%, 70%, ${param4 / 255})`;
+                dryCtx.fillStyle = `hsla(${hue}, 80%, 70%, ${param4 / 255})`;
+                dryCtx.lineWidth = param1; // Point size
+                dryCtx.lineCap = 'round';
+
+                // Set the number of times we lerp the point
+                const lerps = param2;
+
+                // Repeat the point with lerping
+                for (let i = 0; i < lerps; i++) {
+                    // Find lerped x and y coordinates with the special splatter formula
+                    const lerpX = lerp(x, prevMouseX, i / lerps + param3);
+                    const lerpY = lerp(y, prevMouseY, i / lerps + param3);
+
+                    // Draw a point (small circle)
+                    dryCtx.beginPath();
+                    dryCtx.arc(lerpX, lerpY, param1 / 2, 0, Math.PI * 2);
+                    dryCtx.fill();
+                }
+
+                dryCtx.restore();
+            }
+        }
+
+        function createToothpickStroke(x, y) {
+            if (dryLayer.width > 0 && dryLayer.height > 0) {
+                dryCtx.save();
+
+                // Use the color picker color with opacity
+                const rgb = hexToRgb(brushColor);
+                if (rgb) {
+                    dryCtx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${param3 / 255})`;
+                }
+
+                // Move the origin to the current mouse point (translate)
+                dryCtx.translate(x, y);
+
+                // Find the angle of the direction the mouse is moving in
+                const angle = Math.atan2(y - prevMouseY, x - prevMouseX);
+
+                // Rotate the canvas by that angle
+                dryCtx.rotate(angle);
+
+                // Set minimum size and find distance
+                const minSize = param2; // Min Size parameter
+                const distance = dist(x, y, prevMouseX, prevMouseY);
+
+                // Draw the toothpick-shaped ellipse
+                const ellipseWidth = distance * param1 + minSize; // Width Multiplier parameter
+                const ellipseHeight = minSize;
+
+                dryCtx.beginPath();
+                dryCtx.ellipse(0, 0, ellipseWidth / 2, ellipseHeight / 2, 0, 0, Math.PI * 2);
+                dryCtx.fill();
+
                 dryCtx.restore();
             }
         }
 
         function animate() {
-            // Increment frame count for animations
             frameCount++;
 
-            // Clear main canvas for temporary effects
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw permanent dry layer first (all permanent marks)
             if (dryLayer.width > 0 && dryLayer.height > 0) {
                 ctx.drawImage(dryLayer, 0, 0);
             }
 
-            // Clear wet layer only for watercolor temporary effects
             if (currentBrush === 'watercolor') {
                 wetCtx.clearRect(0, 0, wetLayer.width, wetLayer.height);
             }
 
-            // Update and draw all particle types (these are temporary effects)
             particles = particles.filter(p => p.update() ? (p.draw(), true) : false);
             waterDroplets = waterDroplets.filter(d => d.update() ? (d.draw(), true) : false);
             waxParticles = waxParticles.filter(w => w.update() ? (w.draw(), true) : false);
             paintGlobs = paintGlobs.filter(g => g.update() ? (g.draw(), true) : false);
 
-            // Draw wet layer on top for watercolor temporary effects
             if (currentBrush === 'watercolor' && wetLayer.width > 0 && wetLayer.height > 0) {
                 ctx.drawImage(wetLayer, 0, 0);
             }
@@ -1268,30 +1333,24 @@
         });
 
         document.getElementById('saveCanvas').addEventListener('click', () => {
-            // Create a temporary canvas to combine all layers
             const tempCanvas = document.createElement('canvas');
             const tempCtx = tempCanvas.getContext('2d');
             tempCanvas.width = canvas.width;
             tempCanvas.height = canvas.height;
 
-            // Fill with white background
             tempCtx.fillStyle = '#ffffff';
             tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-            // Draw the dry layer (permanent marks)
             if (dryLayer.width > 0 && dryLayer.height > 0) {
                 tempCtx.drawImage(dryLayer, 0, 0);
             }
 
-            // Draw the main canvas (current temporary effects)
             tempCtx.drawImage(canvas, 0, 0);
 
-            // Create download link
             const link = document.createElement('a');
             link.download = `painting_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
             link.href = tempCanvas.toDataURL('image/png');
 
-            // Trigger download
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

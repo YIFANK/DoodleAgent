@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draw Something Amazing</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .canvas-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            max-width: 900px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .canvas-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #fd79a8);
+            border-radius: 20px 20px 0 0;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .brush-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .brush-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .brush-btn.active {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .brush-btn.pen {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+        }
+
+        .brush-btn.marker {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+        }
+
+        .brush-btn.rainbow {
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4, #45b7d1);
+            color: white;
+        }
+
+        .brush-btn.wiggle {
+            background: linear-gradient(135deg, #ff7675, #fd79a8);
+            color: white;
+        }
+
+        .brush-btn.spray {
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+            color: white;
+        }
+
+        .brush-btn.fountain {
+            background: linear-gradient(135deg, #00b894, #00cec9);
+            color: white;
+        }
+
+        .canvas-wrapper {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
+            background: #fbf8f3;
+            position: relative;
+        }
+
+        .canvas-wrapper::before {
+            content: '✨ Click and drag to start drawing! ✨';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #bbb;
+            font-size: 1.2rem;
+            font-weight: 500;
+            pointer-events: none;
+            z-index: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .canvas-wrapper.drawing::before {
+            opacity: 0;
+        }
+
+        .clear-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .clear-btn:hover {
+            background: #ff5252;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        .instructions {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                gap: 10px;
+            }
+            
+            .brush-btn {
+                padding: 10px 16px;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="canvas-container">
+        <div class="header">
+            <h1 class="title">Draw Something Amazing</h1>
+            <p class="subtitle">Express yourself with our magical brushes</p>
+        </div>
+        
+        <div class="controls">
+            <button class="brush-btn pen active" onclick="setBrush('pen')">✏️ Pen</button>
+            <button class="brush-btn marker" onclick="setBrush('marker')">🖍️ Marker</button>
+            <button class="brush-btn rainbow" onclick="setBrush('rainbow')">🌈 Rainbow</button>
+            <button class="brush-btn wiggle" onclick="setBrush('wiggle')">〰️ Wiggle</button>
+            <button class="brush-btn spray" onclick="setBrush('spray')">🎨 Spray</button>
+            <button class="brush-btn fountain" onclick="setBrush('fountain')">🖋️ Fountain</button>
+        </div>
+        
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <button class="clear-btn" onclick="clearCanvas()">🗑️ Clear</button>
+            <div id="p5-canvas"></div>
+        </div>
+        
+        <div class="instructions">
+            Try different brushes and see how they feel! Each one has its own personality.
+        </div>
+    </div>
+
+    <script>
+        let currentBrush = 'pen';
+        let hasDrawn = false;
+
+        function setBrush(brushType) {
+            currentBrush = brushType;
+            
+            // Update active button
+            document.querySelectorAll('.brush-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`.brush-btn.${brushType}`).classList.add('active');
+        }
+
+        function clearCanvas() {
+            background('#fbf8f3');
+            hasDrawn = false;
+            document.getElementById('canvasWrapper').classList.remove('drawing');
+        }
+
+        function setup() {
+            let canvas = createCanvas(850, 500);
+            canvas.parent('p5-canvas');
+            background('#fbf8f3');
+            
+            // Set initial drawing state
+            strokeCap(ROUND);
+        }
+
+        function draw() {
+            if (mouseIsPressed && mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
+                if (!hasDrawn) {
+                    hasDrawn = true;
+                    document.getElementById('canvasWrapper').classList.add('drawing');
+                }
+                
+                // Call the appropriate brush function
+                switch(currentBrush) {
+                    case 'pen':
+                        pen();
+                        break;
+                    case 'marker':
+                        marker();
+                        break;
+                    case 'rainbow':
+                        rainbowBeads();
+                        break;
+                    case 'wiggle':
+                        wiggle();
+                        break;
+                    case 'spray':
+                        sprayPaint();
+                        break;
+                    case 'fountain':
+                        fountainPen();
+                        break;
+                }
+            }
+        }
+
+        // Brush Functions (based on SuperHi tutorial)
+        
+        function pen() {
+            stroke(0, 0, 0, 255);
+            strokeWeight(2);
+            line(mouseX, mouseY, pmouseX, pmouseY);
+        }
+
+        function marker() {
+            fill(255, 200, 103, 40);
+            noStroke();
+            circle(mouseX, mouseY, 50);
+        }
+
+        function rainbowBeads() {
+            const hue = (frameCount * 10) % 360;
+            const hsbaColor = color(`hsba(${hue}, 70%, 90%, 0.6)`);
+            fill(hsbaColor);
+            noStroke();
+            
+            const distance = dist(mouseX, mouseY, pmouseX, pmouseY);
+            const midX = (mouseX + pmouseX) / 2;
+            const midY = (mouseY + pmouseY) / 2;
+            
+            circle(midX, midY, distance);
+        }
+
+        function wiggle() {
+            stroke(255, 120, 0, 255);
+            strokeWeight(3);
+            noFill();
+            
+            const distance = dist(mouseX, mouseY, pmouseX, pmouseY);
+            const midX = (mouseX + pmouseX) / 2;
+            const midY = (mouseY + pmouseY) / 2;
+            
+            const angle = Math.atan2(mouseY - pmouseY, mouseX - pmouseX);
+            const flip = (frameCount % 2) * PI;
+            
+            arc(midX, midY, distance, distance, angle + flip, angle + PI + flip);
+        }
+
+        function sprayPaint() {
+            stroke(0, 0, 0, 180);
+            strokeWeight(1);
+            
+            const speed = abs(mouseX - pmouseX) + abs(mouseY - pmouseY);
+            const minRadius = 8;
+            const sprayDensity = 40;
+            const r = speed + minRadius;
+            const rSquared = r * r;
+            const lerps = 6;
+            
+            for (let i = 0; i < lerps; i++) {
+                const lerpX = lerp(mouseX, pmouseX, i / lerps);
+                const lerpY = lerp(mouseY, pmouseY, i / lerps);
+                
+                for (let j = 0; j < sprayDensity; j++) {
+                    const randX = random(-r, r);
+                    const randY = random(-1, 1) * sqrt(rSquared - randX * randX);
+                    point(lerpX + randX, lerpY + randY);
+                }
+            }
+        }
+
+        function fountainPen() {
+            stroke(0, 0, 0, 255);
+            strokeWeight(1);
+            const width = 4;
+            const lerps = 12;
+            
+            for (let i = 0; i < lerps; i++) {
+                const x = lerp(mouseX, pmouseX, i / lerps);
+                const y = lerp(mouseY, pmouseY, i / lerps);
+                line(x - width, y - width, x + width, y + width);
+            }
+        }
+
+        // Responsive canvas
+        function windowResized() {
+            const container = document.querySelector('.canvas-wrapper');
+            const containerWidth = container.offsetWidth - 50; // Account for padding
+            const containerHeight = Math.min(500, window.innerHeight * 0.6);
+            
+            resizeCanvas(Math.min(850, containerWidth), containerHeight);
+            background('#fbf8f3');
+        }
+    </script>
+</body>
+</html>
