@@ -7,22 +7,21 @@ import os
 import base64
 from typing import Dict, List, Tuple, Optional
 import openai
-import anthropic
 from config import config
 import datetime
 from PIL import Image
 import io
+import base64
 
 app = Flask(__name__)
 
 # Load configuration
 env = os.environ.get('FLASK_ENV', 'development')
 app.config.from_object(config[env])
+
 # Configure OpenAI API key
 openai.api_key = app.config['OPENAI_API_KEY']
-client = anthropic.Anthropic(
-                api_key=app.config['ANTHROPIC_API_KEY']  # Set your API key
-            )
+
 # Create output directories
 OUTPUT_DIR = "illustrations"
 CANVAS_DIR = os.path.join(OUTPUT_DIR, "canvas_states")
@@ -46,24 +45,38 @@ class RoughDrawingAgent:
         self.max_shapes = 8
         self.session_id = int(time.time())
 
+    # def _create_mood_prompt(self) -> str:
+    #     """Generate prompt for LLM to choose artistic mood"""
+    #     return "You are an creative, expressive, opinionated artist about to create a doodle that noone has seen. Summarize it with one evocative word (example: threshold, echo, becoming)"
+    #     # return """You are an creative, expressive, opinionated artist about to create a doodle that noone has seen before.
+    #     # Describe this doodle in a sentence"""
+    #     # return "You are an creative artist that likes to doodle. Generate an animal or object that you want to sketch with at most a few keywords"
+
     def _create_mood_prompt(self) -> str:
         """Generate prompt for LLM to choose artistic mood"""
-        return """You are an autonomous artist about to create a sketch.
-Choose an artistic mood that will guide your entire composition.
-Respond with a single descriptive word (e.g., melancholic, energetic, chaotic, serene, bold, gentle, etc.)"""
+        return """You are a creative, expressive, opinionated artist about to create a doodle that no one has seen before.
+
+    Choose one evocative word that captures the essence of your artistic vision for this doodle.
+
+    Examples: threshold, echo, becoming, cascade, whisper, fracture, bloom, drift
+
+    Respond with JSON:
+    {
+        "mood": "your_chosen_word"
+    }"""
 
     def _create_palette_prompt(self) -> str:
         """Generate prompt for LLM to choose color palette"""
         return f"""You are an autonomous artist creating a {self.current_mood} sketch.
 
-Choose a color palette that expresses the {self.current_mood} mood.
+Choose a color palette that expresses the {self.current_mood} doodle.
 Consider color harmony, emotional impact, and visual balance.
 
 Respond with JSON:
 {{
     "palette": ["#color1", "#color2", "#color3", "#color4", "#color5"],
     "palette_name": "descriptive name",
-    "reasoning": "why these colors work for this mood",
+    "reasoning": "why these colors work for this drawing",
     "dominant_color": "#main_color",
     "accent_colors": ["#accent1", "#accent2"]
 }}"""
@@ -72,7 +85,8 @@ Respond with JSON:
         """Generate prompt for next shape based on current canvas state"""
         canvas_context = ""
         if canvas_image_data:
-            canvas_context = "Look at the current canvas state and decide what shape would naturally come next."
+            canvas_context = "Look at the current canvas state and decide what shape would naturally come next. CRITICAL: Drastically vary the size of each shape. Do not overlap with existing shapes. Find empty areas of the canvas to place your shape. Analyze the existing shapes carefully and choose coordinates that avoid collision."
+            # canvas_context = "Look at the current canvas state and decide what shape would naturally come next. You want to cover more blank canvas and tends to not repeat things"
         else:
             canvas_context = "This is the first shape on a blank canvas."
 
@@ -101,9 +115,9 @@ Style options include:
 - bowing: 0-2 (curve amount)
 
 Create ONE shape that feels right for this moment. Consider:
-- What would naturally come next?
-- How does this relate to the {self.current_mood} mood?
-- What story is emerging?
+- Is it creating an artwork noone has ever seen before?
+- Its positioning on the canvas and is it covering too much of the shapes from before?
+- Composition that reduces overlap and covers more canvas
 
 Respond with JSON:
 {{
@@ -123,37 +137,26 @@ Respond with JSON:
 }}"""
 
     def _call_llm(self, prompt: str, image_data: Optional[str] = None) -> Dict:
-        """Call Claude LLM with optional image context"""
+        """Call LLM with optional image context"""
         try:
-            # Prepare the message content
-            content = []
-            content.append({"type": "text", "text": prompt})
-            
+            content = prompt
             if image_data:
-                # Claude expects image data in a specific format
-                content.append({
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": "image/png",  # Adjust media type as needed
-                        "data": image_data
-                    }
-                })
-
-            response = client.messages.create(
-                model="claude-3-5-haiku-20241022",  # or claude-3-opus-20240229, claude-3-haiku-20240307
-                max_tokens=500,
-                temperature=0.9,
-                system="You are a creative artist. Respond only with valid JSON.",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": content
-                    }
+                content = [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_data}"}}
                 ]
+
+            response = openai.ChatCompletion.create(
+                model="gpt-4.1-mini",
+                messages=[
+                    {"role": "system", "content": "You are a creative artist. Respond only with valid JSON."},
+                    {"role": "user", "content": content}
+                ],
+                temperature=0.9,
+                max_tokens=500
             )
 
-            response_text = response.content[0].text.strip()
+            response_text = response.choices[0].message.content.strip()
 
             # Clean JSON formatting
             if response_text.startswith('```json'):
@@ -164,7 +167,7 @@ Respond with JSON:
             return json.loads(response_text)
 
         except Exception as e:
-            print(f"Claude LLM error: {e}")
+            print(f"LLM error: {e}")
             return self._create_fallback_shape()
 
     def _create_fallback_shape(self) -> Dict:
@@ -264,8 +267,12 @@ Respond with JSON:
         if test_mode:
             self.current_mood = random.choice(["geometric", "organic", "expressive", "minimal"])
         else:
+            # mood_response = self._call_llm(self._create_mood_prompt())
+            # self.current_mood = mood_response if isinstance(mood_response, str) else "expressive"
             mood_response = self._call_llm(self._create_mood_prompt())
+            # print(mood_response)
             mood = list(mood_response.values())[0]
+            print(mood)
             self.current_mood = mood
 
         # Choose palette
@@ -497,7 +504,6 @@ def test_api():
         "success": True,
         "message": "API is working",
         "openai_configured": bool(openai.api_key and openai.api_key != "your-api-key-here"),
-        "anthropic_configured": bool(anthropic.api_key and anthropic.api_key != "your-api-key-here"),
         "output_dirs_exist": {
             "illustrations": os.path.exists(OUTPUT_DIR),
             "canvas_states": os.path.exists(CANVAS_DIR)
@@ -830,7 +836,7 @@ def demo_page():
             try {
                 const response = await fetch('/api/test');
                 const data = await response.json();
-                showStatus(`API Test: ${data.message} | Anthropic: ${data.anthropic_configured}`, false);
+                showStatus(`API Test: ${data.message} | OpenAI: ${data.openai_configured}`, false);
             } catch (error) {
                 showStatus('API test failed: ' + error.message, true);
             }
