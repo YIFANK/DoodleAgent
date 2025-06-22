@@ -218,11 +218,11 @@
             .title {
                 font-size: 2rem;
             }
-            
+
             .controls {
                 gap: 10px;
             }
-            
+
             .brush-btn {
                 padding: 10px 16px;
                 font-size: 0.8rem;
@@ -236,7 +236,7 @@
             <h1 class="title">Draw Something Amazing</h1>
             <p class="subtitle">Express yourself with our magical brushes</p>
         </div>
-        
+
         <div class="controls">
             <button class="brush-btn pen active" onclick="setBrush('pen')">✏️ Pen</button>
             <button class="brush-btn marker" onclick="setBrush('marker')">🖍️ Marker</button>
@@ -246,13 +246,13 @@
             <button class="brush-btn fountain" onclick="setBrush('fountain')">🖋️ Fountain</button>
             <button class="brush-btn bot-btn" onclick="toggleBot()">🤖 <span id="bot-status">Start Bot</span></button>
         </div>
-        
+
         <div class="canvas-wrapper" id="canvasWrapper">
             <button class="clear-btn" onclick="clearCanvas()">🗑️ Clear</button>
             <button class="save-btn" onclick="saveCanvas()">💾 Save</button>
             <div id="p5-canvas"></div>
         </div>
-        
+
         <div class="instructions">
             Try different brushes and see how they feel! Each one has its own personality.
         </div>
@@ -272,7 +272,7 @@
 
         function setBrush(brushType) {
             currentBrush = brushType;
-            
+
             // Update active button
             document.querySelectorAll('.brush-btn').forEach(btn => {
                 btn.classList.remove('active');
@@ -284,7 +284,7 @@
             botActive = !botActive;
             const botButton = document.querySelector('.bot-btn');
             const botStatus = document.getElementById('bot-status');
-            
+
             if (botActive) {
                 botButton.classList.add('active');
                 botStatus.textContent = 'Stop Bot';
@@ -317,37 +317,37 @@
             // Pick a random brush
             const randomBrush = brushTypes[Math.floor(Math.random() * brushTypes.length)];
             setBrush(randomBrush);
-            
+
             // Generate random stroke points
             const numPoints = Math.floor(random(3, 15));
             const strokePoints = [];
-            
+
             // Starting point
             let startX = random(50, width - 50);
             let startY = random(50, height - 50);
-            
+
             for (let i = 0; i < numPoints; i++) {
                 // Generate points that create a natural stroke path
                 const angle = random(0, TWO_PI);
                 const distance = random(10, 50);
                 const x = startX + cos(angle) * distance * i * 0.3;
                 const y = startY + sin(angle) * distance * i * 0.3;
-                
+
                 // Keep points within canvas bounds
                 strokePoints.push({
                     x: constrain(x, 10, width - 10),
                     y: constrain(y, 10, height - 10)
                 });
-                
+
                 // Update starting point for next segment (creates flowing strokes)
                 startX = strokePoints[strokePoints.length - 1].x + random(-20, 20);
                 startY = strokePoints[strokePoints.length - 1].y + random(-20, 20);
             }
-            
+
             botCurrentStroke = strokePoints;
             botStrokeIndex = 0;
             isDrawingStroke = true;
-            
+
             // Mark that drawing has started
             if (!hasDrawn) {
                 hasDrawn = true;
@@ -357,20 +357,20 @@
 
         function drawBotStroke() {
             if (!isDrawingStroke || botCurrentStroke.length === 0) return;
-            
+
             // Draw multiple points per frame for smoother strokes
             const pointsPerFrame = 2;
-            
+
             for (let i = 0; i < pointsPerFrame && botStrokeIndex < botCurrentStroke.length - 1; i++) {
                 const currentPoint = botCurrentStroke[botStrokeIndex];
                 const nextPoint = botCurrentStroke[botStrokeIndex + 1];
-                
+
                 // Simulate mouse position for brush functions
                 mouseX = currentPoint.x;
                 mouseY = currentPoint.y;
                 pmouseX = nextPoint.x;
                 pmouseY = nextPoint.y;
-                
+
                 // Call the appropriate brush function
                 switch(currentBrush) {
                     case 'pen':
@@ -392,10 +392,10 @@
                         fountainPen();
                         break;
                 }
-                
+
                 botStrokeIndex++;
             }
-            
+
             // End stroke when all points are drawn
             if (botStrokeIndex >= botCurrentStroke.length - 1) {
                 isDrawingStroke = false;
@@ -407,7 +407,7 @@
             background('#fbf8f3');
             hasDrawn = false;
             document.getElementById('canvasWrapper').classList.remove('drawing');
-            
+
             // Stop bot if active and reset its state
             if (botActive) {
                 toggleBot();
@@ -419,15 +419,15 @@
         function saveCanvas() {
             // Generate filename with timestamp
             const now = new Date();
-            const timestamp = now.getFullYear() + 
-                            String(now.getMonth() + 1).padStart(2, '0') + 
+            const timestamp = now.getFullYear() +
+                            String(now.getMonth() + 1).padStart(2, '0') +
                             String(now.getDate()).padStart(2, '0') + '_' +
-                            String(now.getHours()).padStart(2, '0') + 
-                            String(now.getMinutes()).padStart(2, '0') + 
+                            String(now.getHours()).padStart(2, '0') +
+                            String(now.getMinutes()).padStart(2, '0') +
                             String(now.getSeconds()).padStart(2, '0');
-            
+
             const filename = `drawing_${timestamp}`;
-            
+
             // Save the canvas as PNG
             save(filename + '.png');
         }
@@ -436,7 +436,7 @@
             let canvas = createCanvas(850, 500);
             canvas.parent('p5-canvas');
             background('#fbf8f3');
-            
+
             // Set initial drawing state
             strokeCap(ROUND);
         }
@@ -446,14 +446,14 @@
             if (botActive && isDrawingStroke) {
                 drawBotStroke();
             }
-            
+
             // Handle user drawing
             if (mouseIsPressed && mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
                 if (!hasDrawn) {
                     hasDrawn = true;
                     document.getElementById('canvasWrapper').classList.add('drawing');
                 }
-                
+
                 // Call the appropriate brush function
                 switch(currentBrush) {
                     case 'pen':
@@ -479,7 +479,7 @@
         }
 
         // Brush Functions (based on SuperHi tutorial)
-        
+
         function pen() {
             stroke(0, 0, 0, 255);
             strokeWeight(2);
@@ -497,44 +497,46 @@
             const hsbaColor = color(`hsba(${hue}, 70%, 90%, 0.6)`);
             fill(hsbaColor);
             noStroke();
-            
+
             const distance = dist(mouseX, mouseY, pmouseX, pmouseY);
+            const maxSize = 100; // Maximum circle size in pixels
+            const circleSize = Math.min(distance, maxSize);
             const midX = (mouseX + pmouseX) / 2;
             const midY = (mouseY + pmouseY) / 2;
-            
-            circle(midX, midY, distance);
+
+            circle(midX, midY, circleSize);
         }
 
         function wiggle() {
             stroke(255, 120, 0, 255);
             strokeWeight(3);
             noFill();
-            
+
             const distance = dist(mouseX, mouseY, pmouseX, pmouseY);
             const midX = (mouseX + pmouseX) / 2;
             const midY = (mouseY + pmouseY) / 2;
-            
+
             const angle = Math.atan2(mouseY - pmouseY, mouseX - pmouseX);
             const flip = (frameCount % 2) * PI;
-            
+
             arc(midX, midY, distance, distance, angle + flip, angle + PI + flip);
         }
 
         function sprayPaint() {
             stroke(0, 0, 0, 180);
             strokeWeight(1);
-            
+
             const speed = abs(mouseX - pmouseX) + abs(mouseY - pmouseY);
             const minRadius = 8;
             const sprayDensity = 40;
             const r = speed + minRadius;
             const rSquared = r * r;
             const lerps = 6;
-            
+
             for (let i = 0; i < lerps; i++) {
                 const lerpX = lerp(mouseX, pmouseX, i / lerps);
                 const lerpY = lerp(mouseY, pmouseY, i / lerps);
-                
+
                 for (let j = 0; j < sprayDensity; j++) {
                     const randX = random(-r, r);
                     const randY = random(-1, 1) * sqrt(rSquared - randX * randX);
@@ -548,7 +550,7 @@
             strokeWeight(1);
             const width = 4;
             const lerps = 12;
-            
+
             for (let i = 0; i < lerps; i++) {
                 const x = lerp(mouseX, pmouseX, i / lerps);
                 const y = lerp(mouseY, pmouseY, i / lerps);
@@ -561,7 +563,7 @@
             const container = document.querySelector('.canvas-wrapper');
             const containerWidth = container.offsetWidth - 50; // Account for padding
             const containerHeight = Math.min(500, window.innerHeight * 0.6);
-            
+
             resizeCanvas(Math.min(850, containerWidth), containerHeight);
             background('#fbf8f3');
         }

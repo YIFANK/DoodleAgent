@@ -20,45 +20,47 @@ def main():
         print("Error: Please set the ANTHROPIC_API_KEY in your .env file")
         print("Create a .env file with: ANTHROPIC_API_KEY=your-api-key-here")
         sys.exit(1)
-    
+
     # Get the path to the drawing_canvas.html file
     current_dir = os.path.dirname(os.path.abspath(__file__))
     canvas_url = f"file://{current_dir}/drawing_canvas.html"
-    
+
     # Initialize the automated drawing canvas
     canvas = AutomatedDrawingCanvas(api_key=api_key, canvas_url=canvas_url)
-    
+
     try:
         print("🎨 Starting Free Drawing Canvas Demo")
         print("=" * 50)
         print("🤖 The AI artist will analyze the canvas and freely decide what to draw!")
         print("   Watch as it creates original artwork step by step.")
         print("=" * 50)
-        
+
         # Start the canvas interface
         canvas.start()
-        
+
         print("\n🖼️ Canvas is ready! The AI artist is now analyzing the blank canvas...")
-        
+
         # Let the user choose between different demo modes
         print("\nChoose a demo mode:")
         print("1. Quick Demo (3 drawing steps)")
         print("2. Extended Demo (7 drawing steps)")
         print("3. Custom Demo (specify number of steps)")
         print("4. Interactive Demo (you ask questions)")
-        
-        choice = input("\nEnter your choice (1-4): ").strip()
-        
+        print("5. Mood-Based Demo (express artistic moods through drawing)")
+        print("6. Abstract Demo (create non-representational art)")
+
+        choice = input("\nEnter your choice (1-6): ").strip()
+
         if choice == "1":
             # Quick demo
             print("\n🎯 Running Quick Demo...")
             canvas.creative_session(num_iterations=3)
-            
+
         elif choice == "2":
             # Extended demo
             print("\n🎯 Running Extended Demo...")
             canvas.creative_session(num_iterations=7)
-            
+
         elif choice == "3":
             # Custom demo
             try:
@@ -72,59 +74,137 @@ def main():
             except ValueError:
                 print("Invalid input, running quick demo instead...")
                 canvas.creative_session(num_iterations=3)
-                
+
         elif choice == "4":
             # Interactive demo
             print("\n🎯 Running Interactive Demo...")
             print("You can ask the AI what to draw next. Type 'quit' to stop.")
-            
+
             # Create output directory
             os.makedirs("output", exist_ok=True)
-            
+
             step = 0
             while True:
                 step += 1
                 print(f"\n--- Interactive Step {step} ---")
-                
+
                 # Get user question
                 question = input("What would you like to ask the AI to draw? (or 'quit'): ").strip()
                 if question.lower() in ['quit', 'exit', 'stop']:
                     break
-                
+
                 if not question:
                     question = "What would you like to draw next?"
-                
+
                 # Execute drawing step
                 canvas_file = f"output/interactive_step_{step}.png"
                 instruction = canvas.draw_from_canvas(canvas_file, question)
-                
+
                 print(f"🎨 AI's response: {instruction.reasoning}")
                 print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
-                
+
                 # Show strokes summary
                 print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
                 for i, stroke in enumerate(instruction.strokes):
                     print(f"   {i+1}. {stroke['description']}")
-            
+
             # Save final interactive artwork
             canvas.bridge.capture_canvas("output/interactive_final.png")
             print(f"\n🎉 Interactive session completed!")
             print(f"Final artwork saved as: output/interactive_final.png")
-        
+
+        elif choice == "5":
+            # Mood-based demo
+            print("\n🎯 Running Mood-Based Demo...")
+            print("The AI will autonomously determine artistic moods and create drawings that express them!")
+            print("Each step starts with the AI choosing a mood, then creating art that embodies that mood.")
+
+            # Create output directory
+            os.makedirs("output", exist_ok=True)
+
+            step = 0
+            while True:
+                step += 1
+                print(f"\n--- Mood Step {step} ---")
+
+                # Ask user if they want to continue
+                continue_choice = input("Press Enter to continue with next mood, or type 'quit' to stop: ").strip()
+
+                if continue_choice.lower() in ['quit', 'exit', 'stop']:
+                    break
+
+                print(f"🎨 AI is determining the mood for this step...")
+
+                # Execute mood-based drawing step (LLM determines mood autonomously)
+                canvas_file = f"output/mood_step_{step}.png"
+                instruction = canvas.draw_from_emotion(canvas_file)  # No mood parameter - LLM chooses
+
+                print(f"🎨 AI's mood: {instruction.reasoning}")
+                print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
+
+                # Show strokes summary
+                print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
+                for i, stroke in enumerate(instruction.strokes):
+                    print(f"   {i+1}. {stroke['description']}")
+
+            # Save final mood-based artwork
+            canvas.bridge.capture_canvas("output/mood_final.png")
+            print(f"\n🎉 Mood-based session completed!")
+            print(f"Final artwork saved as: output/mood_final.png")
+
+        elif choice == "6":
+            # Abstract demo
+            print("\n🎯 Running Abstract Demo...")
+            print("The AI will create pure, non-representational art!")
+            print("No concrete objects - just abstract shapes, lines, and pure creativity.")
+
+            # Create output directory
+            os.makedirs("output", exist_ok=True)
+
+            step = 0
+            while True:
+                step += 1
+                print(f"\n--- Abstract Step {step} ---")
+
+                # Ask user if they want to continue
+                continue_choice = input("Press Enter to continue with next abstract creation, or type 'quit' to stop: ").strip()
+
+                if continue_choice.lower() in ['quit', 'exit', 'stop']:
+                    break
+
+                print(f"🎨 AI is creating abstract art...")
+
+                # Execute abstract drawing step
+                canvas_file = f"output/abstract_step_{step}.png"
+                instruction = canvas.draw_from_abstract(canvas_file)
+
+                print(f"🎨 AI's abstract creation: {instruction.reasoning}")
+                print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
+
+                # Show strokes summary
+                print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
+                for i, stroke in enumerate(instruction.strokes):
+                    print(f"   {i+1}. {stroke['description']}")
+
+            # Save final abstract artwork
+            canvas.bridge.capture_canvas("output/abstract_final.png")
+            print(f"\n🎉 Abstract session completed!")
+            print(f"Final artwork saved as: output/abstract_final.png")
+
         else:
             print("Invalid choice, running quick demo...")
             canvas.creative_session(num_iterations=3)
-        
+
         print(f"\n🎉 Demo completed successfully!")
         print("Check the 'output' folder for saved artwork images.")
-        
+
     except KeyboardInterrupt:
         print("\n⚠️ Demo interrupted by user")
     except Exception as e:
         print(f"\n❌ Error during demo: {e}")
         import traceback
         traceback.print_exc()
-    
+
     finally:
         canvas.close()
         print("\n👋 Demo finished. Browser closed.")
@@ -135,21 +215,21 @@ def test_agent_only():
     if not api_key:
         print("Error: Please set the ANTHROPIC_API_KEY in your .env file")
         return
-    
+
     from free_drawing_agent import FreeDrawingAgent
     import json
-    
+
     agent = FreeDrawingAgent(api_key=api_key)
-    
+
     # Test with the existing canvas image if available
     canvas_path = "current_canvas.png"
     if os.path.exists(canvas_path):
         print("🧪 Testing agent with existing canvas image...")
         instruction = agent.create_drawing_instruction(
-            canvas_path, 
+            canvas_path,
             "Looking at this canvas, what creative element would you add?"
         )
-        
+
         print("Generated Drawing Instruction:")
         print(json.dumps({
             "brush": instruction.brush,
@@ -165,4 +245,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--test-agent":
         test_agent_only()
     else:
-        main() 
+        main()

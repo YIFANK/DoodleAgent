@@ -28,14 +28,14 @@ You must output ONLY valid JSON in the EXACT structure shown below. Any deviatio
 ## BRUSH TYPES AND CHARACTERISTICS:
 
 ### Precision Tools:
-- **pen**: Clean, precise pen lines with consistent flow. Ideal for fine details, outlines, and technical drawing elements. Draws in #000000
-- **marker**: Broad marker strokes with semi-transparent blending. Good for filling areas and creating bold, graphic elements. Draws in #ffc867 with high transparency.
+- **pen**: Clean, precise pen lines with consistent flow. Ideal for fine details, outlines, and technical drawing elements. Draws in black
+- **marker**: Broad marker strokes with semi-transparent blending. Good for filling areas and creating bold, graphic elements. Draws in light orange with high transparency.
 
 ### Creative/Artistic Brushes:
 - **rainbow**: Dynamic rainbow colors that change as you draw with flowing effects. Creates colorful, vibrant strokes that cycle through the spectrum. It draws in a gradient of rainbow colors consistently.
-- **wiggle**: Playful wiggling lines with dynamic curves and organic movement. Adds whimsical, wavy character to strokes. Draws in #ff7800
-- **spray**: Spray paint effect with particle dispersion and texture. Creates scattered, airy effects similar to aerosol painting. It creates very textured #000000 dots.
-- **fountain**: Fountain pen with diagonal slanted lines and smooth ink flow. Produces elegant, calligraphic-style strokes. Draws in #000000.
+- **wiggle**: Playful wiggling lines with dynamic curves and organic movement. Adds whimsical, wavy character to strokes. Draws in orange
+- **spray**: Spray paint effect with particle dispersion and texture. Creates scattered, airy effects similar to aerosol painting. It creates very textured black dots.
+- **fountain**: Fountain pen with diagonal slanted lines and smooth ink flow. Produces elegant, calligraphic-style strokes. Draws in black.
 
 
 ## FORBIDDEN FIELDS (WILL CAUSE ERRORS):
@@ -152,7 +152,7 @@ Before responding, verify:
 - **Spatial Relationships**: Plan how strokes relate to each other spatially to form the complete drawing
 - **Canvas Utilization**: Use appropriate portions of the canvas for the subject matter
 - **Visual Harmony**: Consider how colors work together across multiple strokes
-- **Color Decisions**: the brushes have a default color already, thus think about how they work together in their natural colors to create a doodle. 
+- **Color Decisions**: the brushes have a default color already, thus think about how they work together in their natural colors to create a doodle.
 
 ### Brush Selection:
 - **MANDATORY VARIETY**: You MUST use a different brush type for each stroke action. Never repeat the same brush consecutively.

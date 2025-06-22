@@ -1,0 +1,13 @@
+{
+  "mood": "chaotic",
+  "brush": "spray",
+  "strokes": [
+    {
+      "x": [300, 400, 500, 600, 450],
+      "y": [200, 300, 200, 300, 250],
+      "t": [1, 1, 1, 1],
+      "description": "Erratic spray patterns zigzagging across and around the existing mountain silhouette, creating a turbulent storm-like effect that emphasizes disorder and unpredictability"
+    }
+  ],
+  "reasoning": "Using the spray brush at fast speeds creates a scattered, unpredictable texture that perfectly embodies chaos. The random particle dispersion of the spray brush, combined with sharp directional changes and quick movements, generates visual turbulence. By positioning these chaotic elements around the existing clean mountain lines, we create a dramatic contrast between order and disorder, further emphasizing the feeling of chaos."
+}
