@@ -55,8 +55,8 @@ class DrawingCanvasBridge:
 
         print("Drawing canvas interface loaded successfully")
 
-    def set_brush(self, brush_type: str):
-        """Set the brush type in the interface using the brush buttons"""
+    def set_brush(self, brush_type: str, color: str = "default"):
+        """Set the brush type and color in the interface using the brush buttons and color pickers"""
         try:
             # Map brush types to button classes in drawing_canvas.html
             brush_button_map = {
@@ -80,6 +80,11 @@ class DrawingCanvasBridge:
 
             time.sleep(0.5)  # Wait for brush to be set
 
+            # Set color for customizable brushes
+            color_customizable_brushes = ["marker", "crayon", "wiggle"]
+            if brush_type in color_customizable_brushes and color != "default":
+                self.set_brush_color(brush_type, color)
+
         except Exception as e:
             print(f"Error setting brush '{brush_type}': {e}")
             # Try to set default pen brush
@@ -89,6 +94,36 @@ class DrawingCanvasBridge:
                 time.sleep(0.5)
             except:
                 print("Failed to set default pen brush")
+
+    def set_brush_color(self, brush_type: str, color: str):
+        """Set the color for a specific brush type"""
+        try:
+            # Map brush types to their color picker IDs
+            color_picker_map = {
+                "marker": "marker-color",
+                "crayon": "crayon-color", 
+                "wiggle": "wiggle-color"
+            }
+
+            if brush_type not in color_picker_map:
+                print(f"Warning: Brush '{brush_type}' does not support color customization")
+                return
+
+            # Find the color picker element
+            color_picker_id = color_picker_map[brush_type]
+            color_picker = self.driver.find_element(By.ID, color_picker_id)
+
+            # Set the color value using JavaScript
+            self.driver.execute_script(f"document.getElementById('{color_picker_id}').value = '{color}';")
+
+            # Trigger the change event to update the brush color
+            self.driver.execute_script(f"document.getElementById('{color_picker_id}').dispatchEvent(new Event('change'));")
+
+            print(f"Set {brush_type} color to {color}")
+            time.sleep(0.2)  # Small delay for color to be applied
+
+        except Exception as e:
+            print(f"Error setting color for brush '{brush_type}': {e}")
 
     def execute_stroke(self, stroke: dict):
         """Execute a single stroke on the canvas"""
@@ -175,8 +210,8 @@ class DrawingCanvasBridge:
 
                 // Create smooth interpolated movement between points
                 let currentPointIndex = 0;
-                const segmentDuration = 200; // 200ms between main points
-                const interpolationSteps = 4; // Number of intermediate points per segment
+                const segmentDuration = 50; // 200ms between main points
+                const interpolationSteps = 2; // Number of intermediate points per segment
                 const stepDuration = segmentDuration / interpolationSteps; // ~20ms per step
 
                 function drawNextSegment() {{
@@ -231,11 +266,8 @@ class DrawingCanvasBridge:
         print(f"Executing instruction: {instruction.reasoning}")
         print(f"Using brush: {instruction.brush}, color: {instruction.color}")
 
-        # Set the brush
-        self.set_brush(instruction.brush)
-
-        # Note: Color setting might not work for all brushes in drawing_canvas.html
-        # since some brushes (like crayon) have their own color behavior
+        # Set the brush and color
+        self.set_brush(instruction.brush, instruction.color)
 
         # Execute all strokes
         for i, stroke in enumerate(instruction.strokes):

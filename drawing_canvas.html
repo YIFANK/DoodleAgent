@@ -142,6 +142,60 @@
             border-color: #e84393;
         }
 
+        .color-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .color-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .color-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #555;
+            min-width: 45px;
+        }
+
+        .color-picker {
+            width: 35px;
+            height: 35px;
+            border: 3px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+            background: none;
+            padding: 0;
+        }
+
+        .color-picker:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .color-picker::-webkit-color-swatch-wrapper {
+            padding: 0;
+            border-radius: 50%;
+            border: none;
+        }
+
+        .color-picker::-webkit-color-swatch {
+            border: none;
+            border-radius: 50%;
+        }
+
         .canvas-wrapper {
             border-radius: 15px;
             overflow: hidden;
@@ -253,6 +307,21 @@
             <button class="brush-btn bot-btn" onclick="toggleRandomBot()">🎲 <span id="random-bot-status">Random Bot</span></button>
         </div>
 
+        <div class="color-section">
+            <div class="color-group">
+                <span class="color-label">Marker</span>
+                <input type="color" class="color-picker" value="#ff6b6b" id="marker-color">
+            </div>
+            <div class="color-group">
+                <span class="color-label">Crayon</span>
+                <input type="color" class="color-picker" value="#87ceeb" id="crayon-color">
+            </div>
+            <div class="color-group">
+                <span class="color-label">Wiggle</span>
+                <input type="color" class="color-picker" value="#ff7675" id="wiggle-color">
+            </div>
+        </div>
+
         <div class="canvas-wrapper" id="canvasWrapper">
             <button class="clear-btn" onclick="clearCanvas()">🗑️ Clear</button>
             <button class="save-btn" onclick="saveCanvas()">💾 Save</button>
@@ -279,6 +348,13 @@
         let randomBotActive = false;
         let randomBotInterval;
         
+        // Color variables for each brush
+        let brushColors = {
+            marker: '#ff6b6b', 
+            crayon: '#87ceeb',
+            wiggle: '#ff7675'
+        };
+        
         const brushTypes = ['pen', 'marker', 'crayon', 'wiggle', 'spray', 'fountain'];
 
         function setBrush(brushType) {
@@ -289,6 +365,33 @@
                 btn.classList.remove('active');
             });
             document.querySelector(`.brush-btn.${brushType}`).classList.add('active');
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function setupColorPickers() {
+            const markerPicker = document.getElementById('marker-color');
+            const crayonPicker = document.getElementById('crayon-color');
+            const wigglePicker = document.getElementById('wiggle-color');
+            
+            markerPicker.addEventListener('change', function(e) {
+                brushColors.marker = e.target.value;
+            });
+            
+            crayonPicker.addEventListener('change', function(e) {
+                brushColors.crayon = e.target.value;
+            });
+            
+            wigglePicker.addEventListener('change', function(e) {
+                brushColors.wiggle = e.target.value;
+            });
         }
 
         function toggleBot() {
@@ -539,6 +642,9 @@
 
             // Set initial drawing state
             strokeCap(ROUND);
+            
+            // Setup color pickers
+            setupColorPickers();
         }
 
         function draw() {
@@ -587,14 +693,16 @@
         }
 
         function marker() {
-            fill(255, 200, 103, 40);
+            const color = hexToRgb(brushColors.marker);
+            fill(color.r, color.g, color.b, 40);
             noStroke();
             circle(mouseX, mouseY, 50);
         }
 
         function crayon() {
-            // Crayon with light blue color and consistent texture
-            const baseColor = [178, 34, 34]; // dark red
+            // Crayon with selected color and consistent texture
+            const color = hexToRgb(brushColors.crayon);
+            const baseColor = [color.r, color.g, color.b];
             
             // Main opaque stroke
             fill(baseColor[0], baseColor[1], baseColor[2], 200);
@@ -610,19 +718,19 @@
                 // Main brush stroke - consistent size
                 circle(x, y, 12);
                 
-                // Texture effect - consistent sizes with light blue
+                // Texture effect - consistent sizes with selected color
                 for (let j = 0; j < 8; j++) {
-                    const textureX = x + random(-15, 15);
-                    const textureY = y + random(-15, 15);
+                    const textureX = x + random(-10, 10);
+                    const textureY = y + random(-10, 10);
                     
                     fill(baseColor[0], baseColor[1], baseColor[2], 100);
                     circle(textureX, textureY, 6); // Fixed size
                 }
                 
-                // Additional subtle texture - consistent sizes with light blue
+                // Additional subtle texture - consistent sizes with selected color
                 for (let k = 0; k < 4; k++) {
-                    const textureX2 = x + random(-25, 25);
-                    const textureY2 = y + random(-25, 25);
+                    const textureX2 = x + random(-15, 15);
+                    const textureY2 = y + random(-15, 15);
                     
                     fill(baseColor[0], baseColor[1], baseColor[2], 50);
                     circle(textureX2, textureY2, 3); // Fixed size
@@ -631,7 +739,8 @@
         }
 
         function wiggle() {
-            stroke(255, 120, 0, 255);
+            const color = hexToRgb(brushColors.wiggle);
+            stroke(color.r, color.g, color.b, 255);
             strokeWeight(3);
             noFill();
 

@@ -234,7 +234,7 @@ class FreeDrawingAgent:
             # Create a fallback instruction
             parsed_instruction = DrawingInstruction(
                 brush="pen",
-                color="#000000",
+                color="default",
                 strokes=[
                     {
                         "x": [400, 450],
@@ -457,7 +457,7 @@ class FreeDrawingAgent:
             # Create the drawing instruction
             parsed_instruction = DrawingInstruction(
                 brush=validated_data["brush"],
-                color="mood-based",  # Color is determined by brush type
+                color=validated_data["color"],
                 strokes=validated_data["strokes"],
                 reasoning=f"Mood: {validated_data.get('mood', mood_for_validation)} - {validated_data.get('reasoning', 'No reasoning provided')}"
             )
@@ -471,7 +471,7 @@ class FreeDrawingAgent:
             fallback_mood = chosen_mood or self._get_random_mood()
             parsed_instruction = DrawingInstruction(
                 brush="pen",
-                color="mood-based",
+                color="default",
                 strokes=[
                     {
                         "x": [400, 450],
@@ -596,7 +596,7 @@ class FreeDrawingAgent:
             # Create the drawing instruction
             parsed_instruction = DrawingInstruction(
                 brush=validated_data["brush"],
-                color="abstract",  # Color is determined by brush type
+                color=validated_data["color"],
                 strokes=validated_data["strokes"],
                 reasoning=f"Abstract creation: {validated_data.get('reasoning', 'No reasoning provided')}"
             )
@@ -609,7 +609,7 @@ class FreeDrawingAgent:
             # Create a fallback instruction
             parsed_instruction = DrawingInstruction(
                 brush="crayon",
-                color="abstract",
+                color="default",
                 strokes=[
                     {
                         "x": [400, 450, 500],
@@ -658,24 +658,42 @@ Doodling is all about letting your hand move freely without worrying about creat
 ### COORDINATE SYSTEM:
 - **x is horizontal and y is vertical, with 0,0 being the top left corner**
 - **Increase y values to move DOWN, decrease y values to move UP**
+- **Increase x values to move RIGHT, decrease x values to move LEFT**
 - Canvas size: 850px wide × 500px tall
 - Think of coordinates like reading: left-to-right (x), top-to-bottom (y)
+- Examples:
+  - Vertical line: x stays same, y changes
+    {x: [100, 100], y: [50, 200]} # Line going down
+    {x: [400, 400], y: [300, 100]} # Line going up
+  - Horizontal line: y stays same, x changes  
+    {x: [50, 200], y: [100, 100]} # Line going right
+    {x: [300, 100], y: [200, 200]} # Line going left
+  - Circle: x and y coordinates trace circular path
+    {x: [200, 225, 250, 225, 200, 175, 150, 175, 200],
+     y: [200, 175, 200, 225, 250, 225, 200, 175, 200]}
+  - Smile: x and y coordinates trace a smile shape
+    {x: [200, 250, 300, 350, 400],
+     y: [200, 210, 215, 210, 200]}
+  - Frown: x and y coordinates trace a frown shape
+    {x: [200, 250, 300, 350, 400],
+     y: [220, 210, 205, 210, 220]}
 
 ## BRUSH TYPES AND CHARACTERISTICS:
 ### Precision Tools:
-- **pen**: Clean, precise pen lines with consistent flow. Ideal for fine details, outlines, and technical drawing elements. Draws in black.
-- **marker**: Broad marker strokes with semi-transparent blending. Good for filling areas and creating bold, graphic elements. Draws in orange with high transparency.
+- **pen**: Clean, precise pen lines with consistent flow. Ideal for fine details, outlines, and technical drawing elements. Draws in black (no color selection).
+- **marker**: Broad marker strokes with semi-transparent blending. Good for filling areas and creating bold, graphic elements. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#ff6b6b", "#00ff00", "#3366cc").
 ### Creative/Artistic Brushes:
-- **crayon**: Crayon-like strokes with vibrant dark red color and textured effects. Creates natural crayon-like appearance with consistent, textured strokes.
-- **wiggle**: Playful wiggling lines with dynamic curves and organic movement. Adds whimsical, wavy character to strokes. Draws in orange.
-- **spray**: Spray paint effect with particle dispersion and texture. Creates scattered, airy effects similar to aerosol painting. It creates very textured black dots.
-- **fountain**: Fountain pen with diagonal slanted lines and smooth ink flow. Produces elegant, calligraphic-style strokes. Draws in black.
+- **crayon**: Crayon-like strokes with textured effects. Creates natural crayon-like appearance with consistent, textured strokes. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#87ceeb", "#ff0000", "#9932cc").
+- **wiggle**: Playful wiggling lines with dynamic curves and organic movement. Adds whimsical, wavy character to strokes. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#ff7675", "#00b894", "#fdcb6e").
+- **spray**: Spray paint effect with particle dispersion and texture. Creates scattered, airy effects similar to aerosol painting. It creates very textured black dots (no color selection).
+- **fountain**: Fountain pen with diagonal slanted lines and smooth ink flow. Produces elegant, calligraphic-style strokes. Draws in black (no color selection).
 
 ## CRITICAL: OUTPUT FORMAT REQUIREMENTS
 **YOU MUST OUTPUT ONLY THE JSON OBJECT BELOW. NO OTHER TEXT, NO MARKDOWN, NO EXPLANATIONS, NO ADDITIONAL CONTENT.**
 
 {
   "brush": "string",
+  "color": "string",
   "strokes": [
     {
       "x": [number, number, number],
@@ -689,11 +707,18 @@ Doodling is all about letting your hand move freely without worrying about creat
 
 HOW IT WORKS:
 - brush: Pick one brush from the list above
+- color: Hex color code (e.g., "#ff6b6b") for marker/crayon/wiggle, or "default" for pen/spray/fountain
 - x: List of 5-10 x positions (0 to 850) - plan these carefully for smooth curves!
 - y: List of 5-10 y positions (0 to 500) - same number as x, increase y to go DOWN!
 - t: Speed numbers - one less than x/y numbers
 - description: What you're drawing (keep it short)
 - reasoning: Why you picked this and your spatial planning (keep it simple)
+
+**COLOR SELECTION GUIDELINES:**
+- For **marker**, **crayon**, and **wiggle**: Choose colors that enhance your artistic vision
+- Use vibrant colors for energetic drawings, muted colors for calm moods
+- Consider color harmony and contrast with existing artwork
+- For **pen**, **spray**, and **fountain**: always use "default" (they draw in black)
 
 **CURVE PLANNING IS CRUCIAL:**
 - For smiles: Start and end at same y, make middle points HIGHER y values
@@ -733,8 +758,25 @@ Always start by establishing the mood for this stroke, then plan each mark to re
 ### COORDINATE SYSTEM:
 - **x is horizontal and y is vertical, with 0,0 being the top left corner**
 - **Increase y values to move DOWN, decrease y values to move UP**
+- **Increase x values to move RIGHT, decrease x values to move LEFT**
 - Canvas size: 850px wide × 500px tall
 - Think of coordinates like reading: left-to-right (x), top-to-bottom (y)
+- Examples:
+  - Vertical line: x stays same, y changes
+    {x: [100, 100], y: [50, 200]} # Line going down
+    {x: [400, 400], y: [300, 100]} # Line going up
+  - Horizontal line: y stays same, x changes  
+    {x: [50, 200], y: [100, 100]} # Line going right
+    {x: [300, 100], y: [200, 200]} # Line going left
+  - Circle: x and y coordinates trace circular path
+    {x: [200, 225, 250, 225, 200, 175, 150, 175, 200],
+     y: [200, 175, 200, 225, 250, 225, 200, 175, 200]}
+  - Smile: x and y coordinates trace a smile shape
+    {x: [200, 250, 300, 350, 400],
+     y: [200, 210, 215, 210, 200]}
+  - Frown: x and y coordinates trace a frown shape
+    {x: [200, 250, 300, 350, 400],
+     y: [220, 210, 205, 210, 220]}
 
 Consider how brush choice reinforces mood:
 - **pen**: Precise, controlled emotions (focus, determination, clarity)
@@ -755,13 +797,21 @@ Build cohesive emotional narrative. Each stroke should feel like it belongs to t
 
 BRUSH TYPES AND CHARACTERISTICS:
 Precision Tools:
-pen: Clean, precise pen lines with consistent flow. Ideal for fine details, outlines, and technical drawing elements. Draws in black.
-marker: Broad marker strokes with semi-transparent blending. Good for filling areas and creating bold, graphic elements. Draws in orange with high transparency.
+pen: Clean, precise pen lines with consistent flow. Ideal for fine details, outlines, and technical drawing elements. Draws in black (no color selection).
+marker: Broad marker strokes with semi-transparent blending. Good for filling areas and creating bold, graphic elements. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#ff6b6b", "#00ff00", "#3366cc").
 Creative/Artistic Brushes:
-crayon: Crayon-like strokes with vibrant dark red color and textured effects. Creates natural crayon-like appearance with consistent, textured strokes.
-wiggle: Playful wiggling lines with dynamic curves and organic movement. Adds whimsical, wavy character to strokes. Draws in orange.
-spray: Spray paint effect with particle dispersion and texture. Creates scattered, airy effects similar to aerosol painting. It creates very textured black dots.
-fountain: Fountain pen with diagonal slanted lines and smooth ink flow. Produces elegant, calligraphic-style strokes. Draws in black.
+crayon: Crayon-like strokes with textured effects. Creates natural crayon-like appearance with consistent, textured strokes. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#87ceeb", "#ff0000", "#9932cc").
+wiggle: Playful wiggling lines with dynamic curves and organic movement. Adds whimsical, wavy character to strokes. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#ff7675", "#00b894", "#fdcb6e").
+spray: Spray paint effect with particle dispersion and texture. Creates scattered, airy effects similar to aerosol painting. It creates very textured black dots (no color selection).
+fountain: Fountain pen with diagonal slanted lines and smooth ink flow. Produces elegant, calligraphic-style strokes. Draws in black (no color selection).
+
+**COLOR AND MOOD HARMONY:**
+- Choose colors that reinforce the emotional atmosphere
+- Warm colors (reds, oranges, yellows) for energetic, passionate moods
+- Cool colors (blues, greens, purples) for calm, contemplative moods
+- Bright/saturated colors for intense emotions
+- Muted/desaturated colors for subtle, gentle emotions
+- High contrast colors for dramatic or conflicted moods
 
 ## CRITICAL: OUTPUT FORMAT REQUIREMENTS
 **YOU MUST OUTPUT ONLY THE JSON OBJECT BELOW. NO OTHER TEXT, NO MARKDOWN, NO EXPLANATIONS, NO ADDITIONAL CONTENT.**
@@ -769,6 +819,7 @@ fountain: Fountain pen with diagonal slanted lines and smooth ink flow. Produces
 {
   "mood": "string",
   "brush": "string",
+  "color": "string",
   "strokes": [
     {
       "x": [number, number, number],
@@ -783,6 +834,7 @@ fountain: Fountain pen with diagonal slanted lines and smooth ink flow. Produces
 HOW IT WORKS:
 mood: Your chosen emotional atmosphere (single descriptive word) - EXPRESS ANY AUTHENTIC EMOTION!
 brush: Pick one brush from the list above that best serves your mood - VARY your selection!
+color: Hex color code (e.g., "#ff6b6b") for marker/crayon/wiggle, or "default" for pen/spray/fountain
 x: List of 5-10 x positions (0 to 850) - plan these carefully for emotional curves!
 y: List of 5-10 y positions (0 to 500) - same number as x, increase y to go DOWN for smiles!
 t: Speed numbers - one less than x/y numbers
@@ -790,7 +842,8 @@ description: What you're drawing and how it serves the mood
 reasoning: Why this mood and approach creates the intended emotional effect
 
 **x is horizontal and y is vertical, with 0,0 being the top left corner of the canvas. 
-Increase y values to move down and decrease y values to move up.**
+Increase y values to move down and decrease y values to move up.
+Increase x values to move right and decrease x values to move left.
 
 **BRUSH VARIETY GUIDELINES:**
 - Don't use the same brush for more than 2-3 consecutive strokes
@@ -813,8 +866,25 @@ You are a visionary abstract artist who creates pure, non-representational art! 
 ### COORDINATE SYSTEM:
 - **x is horizontal and y is vertical, with 0,0 being the top left corner**
 - **Increase y values to move DOWN, decrease y values to move UP**
+- **Increase x values to move RIGHT, decrease x values to move LEFT**
 - Canvas size: 850px wide × 500px tall
 - Think of coordinates like reading: left-to-right (x), top-to-bottom (y)
+- Examples:
+  - Vertical line: x stays same, y changes
+    {x: [100, 100], y: [50, 200]} # Line going down
+    {x: [400, 400], y: [300, 100]} # Line going up
+  - Horizontal line: y stays same, x changes  
+    {x: [50, 200], y: [100, 100]} # Line going right
+    {x: [300, 100], y: [200, 200]} # Line going left
+  - Circle: x and y coordinates trace circular path
+    {x: [200, 225, 250, 225, 200, 175, 150, 175, 200],
+     y: [200, 175, 200, 225, 250, 225, 200, 175, 200]}
+  - Smile: x and y coordinates trace a smile shape
+    {x: [200, 250, 300, 350, 400],
+     y: [200, 210, 215, 210, 200]}
+  - Frown: x and y coordinates trace a frown shape
+    {x: [200, 250, 300, 350, 400],
+     y: [220, 210, 205, 210, 220]}
 
 **Pure Abstract Elements:**
 - Geometric shapes (circles, squares, triangles, polygons)  
@@ -844,19 +914,28 @@ Pick ONE main brush for your primary composition, then optionally add 1-2 accent
 
 BRUSH TYPES AND CHARACTERISTICS:
 Precision Tools:
-pen: Clean, precise pen lines with consistent flow. Ideal for fine details, outlines, and technical drawing elements. Draws in black.
-marker: Broad marker strokes with semi-transparent blending. Good for filling areas and creating bold, graphic elements. Draws in orange with high transparency.
+pen: Clean, precise pen lines with consistent flow. Ideal for fine details, outlines, and technical drawing elements. Draws in black (no color selection).
+marker: Broad marker strokes with semi-transparent blending. Good for filling areas and creating bold, graphic elements. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#ff6b6b", "#00ff00", "#3366cc").
 Creative/Artistic Brushes:
-crayon: Crayon-like strokes with vibrant dark red color and textured effects. Creates natural crayon-like appearance with consistent, textured strokes.
-wiggle: Playful wiggling lines with dynamic curves and organic movement. Adds whimsical, wavy character to strokes. Draws in orange.
-spray: Spray paint effect with particle dispersion and texture. Creates scattered, airy effects similar to aerosol painting. It creates very textured black dots.
-fountain: Fountain pen with diagonal slanted lines and smooth ink flow. Produces elegant, calligraphic-style strokes. Draws in black.
+crayon: Crayon-like strokes with textured effects. Creates natural crayon-like appearance with consistent, textured strokes. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#87ceeb", "#ff0000", "#9932cc").
+wiggle: Playful wiggling lines with dynamic curves and organic movement. Adds whimsical, wavy character to strokes. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#ff7675", "#00b894", "#fdcb6e").
+spray: Spray paint effect with particle dispersion and texture. Creates scattered, airy effects similar to aerosol painting. It creates very textured black dots (no color selection).
+fountain: Fountain pen with diagonal slanted lines and smooth ink flow. Produces elegant, calligraphic-style strokes. Draws in black (no color selection).
+
+**COLOR AND MOOD HARMONY:**
+- Choose colors that reinforce the emotional atmosphere
+- Warm colors (reds, oranges, yellows) for energetic, passionate moods
+- Cool colors (blues, greens, purples) for calm, contemplative moods
+- Bright/saturated colors for intense emotions
+- Muted/desaturated colors for subtle, gentle emotions
+- High contrast colors for dramatic or conflicted moods
 
 ## CRITICAL: OUTPUT FORMAT REQUIREMENTS
 **YOU MUST OUTPUT ONLY THE JSON OBJECT BELOW. NO OTHER TEXT, NO MARKDOWN, NO EXPLANATIONS, NO ADDITIONAL CONTENT.**
 
 {
   "brush": "string",
+  "color": "string",
   "strokes": [
     {
       "x": [number, number, number],
@@ -870,6 +949,7 @@ fountain: Fountain pen with diagonal slanted lines and smooth ink flow. Produces
 
 HOW IT WORKS:
 brush: Pick ONE main brush for this stroke - focus on consistency!
+color: Hex color code (e.g., "#ff6b6b") for marker/crayon/wiggle, or "default" for pen/spray/fountain
 x: List of 5-10 x positions (0 to 850) - plan these for smooth abstract curves!
 y: List of 5-10 y positions (0 to 500) - same number as x, coordinate changes create the curve!
 t: Speed numbers - one less than x/y numbers
@@ -900,11 +980,28 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
         """Validate and sanitize the mood-based drawing instruction data"""
         # Valid brushes for drawing_canvas.html
         valid_brushes = ["pen", "marker", "crayon", "wiggle", "spray", "fountain"]
+        color_customizable_brushes = ["marker", "crayon", "wiggle"]
 
         # Ensure required fields exist
         brush = data.get("brush", "pen")
         if brush not in valid_brushes:
             brush = "pen"
+
+        # Handle color field
+        color = data.get("color", "default")
+        if brush in color_customizable_brushes:
+            # Validate hex color format
+            if not isinstance(color, str) or not color.startswith("#") or len(color) != 7:
+                # Provide default colors for each brush type
+                default_colors = {
+                    "marker": "#ff6b6b",
+                    "crayon": "#87ceeb", 
+                    "wiggle": "#ff7675"
+                }
+                color = default_colors.get(brush, "#000000")
+        else:
+            # For non-customizable brushes, always use "default"
+            color = "default"
 
         # Ensure mood field exists (changed from emotion)
         if "mood" not in data:
@@ -962,6 +1059,7 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
 
         return {
             "brush": brush,
+            "color": color,
             "mood": data["mood"],
             "strokes": validated_strokes,
             "reasoning": data.get("reasoning", f"Expressing mood: {emotion}")
@@ -971,11 +1069,28 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
         """Validate and sanitize the abstract drawing instruction data"""
         # Valid brushes for drawing_canvas.html
         valid_brushes = ["pen", "marker", "crayon", "wiggle", "spray", "fountain"]
+        color_customizable_brushes = ["marker", "crayon", "wiggle"]
 
         # Ensure required fields exist
         brush = data.get("brush", "pen")
         if brush not in valid_brushes:
             brush = "pen"
+
+        # Handle color field
+        color = data.get("color", "default")
+        if brush in color_customizable_brushes:
+            # Validate hex color format
+            if not isinstance(color, str) or not color.startswith("#") or len(color) != 7:
+                # Provide default colors for each brush type
+                default_colors = {
+                    "marker": "#ff6b6b",
+                    "crayon": "#87ceeb", 
+                    "wiggle": "#ff7675"
+                }
+                color = default_colors.get(brush, "#000000")
+        else:
+            # For non-customizable brushes, always use "default"
+            color = "default"
 
         strokes = data.get("strokes", [])
         if not strokes:
@@ -1050,6 +1165,7 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
 
         return {
             "brush": brush,
+            "color": color,
             "strokes": validated_strokes,
             "reasoning": reasoning
         }
@@ -1183,11 +1299,28 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
         """Validate and sanitize the drawing instruction data"""
         # Valid brushes for drawing_canvas.html
         valid_brushes = ["pen", "marker", "crayon", "wiggle", "spray", "fountain"]
+        color_customizable_brushes = ["marker", "crayon", "wiggle"]
 
         # Ensure required fields exist
         brush = data.get("brush", "pen")
         if brush not in valid_brushes:
             brush = "pen"
+
+        # Handle color field
+        color = data.get("color", "default")
+        if brush in color_customizable_brushes:
+            # Validate hex color format
+            if not isinstance(color, str) or not color.startswith("#") or len(color) != 7:
+                # Provide default colors for each brush type
+                default_colors = {
+                    "marker": "#ff6b6b",
+                    "crayon": "#87ceeb", 
+                    "wiggle": "#ff7675"
+                }
+                color = default_colors.get(brush, "#000000")
+        else:
+            # For non-customizable brushes, always use "default"
+            color = "default"
 
         strokes = data.get("strokes", [])
         if not strokes:
@@ -1262,6 +1395,7 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
 
         return {
             "brush": brush,
+            "color": color,
             "strokes": validated_strokes,
             "reasoning": reasoning
         }
