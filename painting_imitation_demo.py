@@ -119,7 +119,8 @@ End your analysis with "ANALYSIS COMPLETE" to proceed to planning."""
         
         analysis_response = painter.agent.client.messages.create(
             model=painter.agent.model,
-            max_tokens=1000,
+            max_tokens=6000,
+            temperature=1,
             messages=[
                 {
                     "role": "user",
@@ -182,7 +183,8 @@ End your response with "PLAN READY" to begin implementation."""
         # Use direct chat for planning (no drawing action needed)
         planning_response = painter.agent.client.messages.create(
             model=painter.agent.model,
-            max_tokens=1000,
+            max_tokens=6000,
+            temperature=1,
             messages=[
                 {
                     "role": "user",

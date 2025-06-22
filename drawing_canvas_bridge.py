@@ -62,7 +62,7 @@ class DrawingCanvasBridge:
             brush_button_map = {
                 "pen": "pen",
                 "marker": "marker",
-                "rainbow": "rainbow",
+                "crayon": "crayon",
                 "wiggle": "wiggle",
                 "spray": "spray",
                 "fountain": "fountain"
@@ -109,7 +109,7 @@ class DrawingCanvasBridge:
             self._execute_continuous_stroke(x_coords, y_coords)
 
     def _execute_continuous_stroke(self, x_coords: list, y_coords: list):
-        """Execute a continuous stroke using JavaScript mouse events"""
+        """Execute a continuous stroke using JavaScript mouse events with smooth interpolation"""
         try:
             # Create JavaScript code to simulate drawing
             js_code = f"""
@@ -124,7 +124,7 @@ class DrawingCanvasBridge:
             const x_coords = {x_coords};
             const y_coords = {y_coords};
 
-            console.log('Starting stroke with coordinates:', x_coords, y_coords);
+            console.log('Starting smooth stroke with coordinates:', x_coords, y_coords);
             console.log('Initial pmouseX, pmouseY:', window.pmouseX, window.pmouseY);
             console.log('Initial mouseX, mouseY:', window.mouseX, window.mouseY);
 
@@ -138,7 +138,11 @@ class DrawingCanvasBridge:
                     view: window
                 }});
                 canvasElement.dispatchEvent(event);
-                console.log('Event:', type, 'at', x, y, 'mouseX:', window.mouseX, 'pmouseX:', window.pmouseX);
+            }}
+
+            // Linear interpolation function
+            function lerp(start, end, t) {{
+                return start + (end - start) * t;
             }}
 
             // CRITICAL FIX: Directly set p5.js mouse variables to prevent large first shape
@@ -167,29 +171,57 @@ class DrawingCanvasBridge:
 
             // Small delay after mousedown, then start moving
             setTimeout(() => {{
-                console.log('Starting movement - pmouseX:', window.pmouseX, 'pmouseY:', window.pmouseY);
+                console.log('Starting smooth movement - pmouseX:', window.pmouseX, 'pmouseY:', window.pmouseY);
 
-                // Draw the stroke by moving through all points (starting from index 1)
-                for (let i = 1; i < x_coords.length; i++) {{
-                    setTimeout(() => {{
-                        simulateMouseEvent('mousemove', x_coords[i], y_coords[i]);
+                // Create smooth interpolated movement between points
+                let currentPointIndex = 0;
+                const segmentDuration = 200; // 200ms between main points
+                const interpolationSteps = 4; // Number of intermediate points per segment
+                const stepDuration = segmentDuration / interpolationSteps; // ~20ms per step
 
-                        // End the stroke on the last point
-                        if (i === x_coords.length - 1) {{
-                            setTimeout(() => {{
-                                simulateMouseEvent('mouseup', x_coords[i], y_coords[i]);
-                                console.log('Stroke completed');
-                            }}, 50);
-                        }}
-                    }}, i * 50);  // Delay between points
+                function drawNextSegment() {{
+                    if (currentPointIndex >= x_coords.length - 1) {{
+                        // End the stroke
+                        setTimeout(() => {{
+                            simulateMouseEvent('mouseup', x_coords[x_coords.length - 1], y_coords[y_coords.length - 1]);
+                            console.log('Smooth stroke completed');
+                        }}, stepDuration);
+                        return;
+                    }}
+
+                    const startX = x_coords[currentPointIndex];
+                    const startY = y_coords[currentPointIndex];
+                    const endX = x_coords[currentPointIndex + 1];
+                    const endY = y_coords[currentPointIndex + 1];
+
+                    // Create smooth interpolation between current and next point
+                    for (let step = 1; step <= interpolationSteps; step++) {{
+                        setTimeout(() => {{
+                            const t = step / interpolationSteps;
+                            const interpX = lerp(startX, endX, t);
+                            const interpY = lerp(startY, endY, t);
+                            
+                            simulateMouseEvent('mousemove', interpX, interpY);
+                            
+                            // If this is the last step of this segment, move to next segment
+                            if (step === interpolationSteps) {{
+                                currentPointIndex++;
+                                setTimeout(drawNextSegment, stepDuration);
+                            }}
+                        }}, step * stepDuration);
+                    }}
                 }}
-            }}, 100);  // Delay after mousedown
+
+                // Start drawing the first segment
+                drawNextSegment();
+            }}, 100);  // Reduced initial delay
             """
 
             self.driver.execute_script(js_code)
 
-            # Wait for the stroke to complete
-            time.sleep(len(x_coords) * 0.05 + 0.5)
+            # Wait for the stroke to complete (200ms per segment + some buffer)
+            total_duration = len(x_coords) * 0.2 + 0.5
+            time.sleep(total_duration)
 
         except Exception as e:
             print(f"Warning: Stroke execution failed: {e}")
@@ -203,7 +235,7 @@ class DrawingCanvasBridge:
         self.set_brush(instruction.brush)
 
         # Note: Color setting might not work for all brushes in drawing_canvas.html
-        # since some brushes (like rainbow) have their own color behavior
+        # since some brushes (like crayon) have their own color behavior
 
         # Execute all strokes
         for i, stroke in enumerate(instruction.strokes):
@@ -346,7 +378,7 @@ class AutomatedDrawingCanvas:
 
         return instruction
 
-    def creative_session(self, num_iterations: int = 5):
+    def creative_session(self, num_iterations: int = 5,output_dir: str = 'output'):
         """
         Run a creative drawing session with multiple iterations.
 
@@ -356,11 +388,10 @@ class AutomatedDrawingCanvas:
         print(f"🎨 Starting creative drawing session with {num_iterations} iterations")
 
         # Create output directory
-        os.makedirs("output", exist_ok=True)
+        os.makedirs(f"{output_dir}", exist_ok=True)
 
         # Capture initial blank canvas
-        initial_canvas = "output/canvas_initial.png"
-        self.bridge.capture_canvas(initial_canvas)
+        self.bridge.capture_canvas(f"{output_dir}/canvas_step_0.png")
 
         instructions = []
 
@@ -384,7 +415,7 @@ class AutomatedDrawingCanvas:
             instructions.append(instruction)
 
             # Capture the result
-            self.bridge.capture_canvas(f"output/canvas_step_{i+1}.png")
+            self.bridge.capture_canvas(f"{output_dir}/canvas_step_{i+1}.png")
 
             print(f"Agent's reasoning: {instruction.reasoning}")
 
@@ -402,6 +433,8 @@ class AutomatedDrawingCanvas:
 
     def close(self):
         """Close the drawing canvas interface"""
+        # Finalize agent session logs
+        self.agent.close_session_logs()
         self.bridge.close()
 
 def main():

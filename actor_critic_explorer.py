@@ -100,7 +100,8 @@ class CriticAgent:
         try:
             response = self.client.messages.create(
                 model=self.model,
-                max_tokens=1500,
+                max_tokens=6000,
+                temperature=1,
                 messages=[user_message],
                 system=[{"type": "text", "text": self._get_critic_system_prompt()}]
             )

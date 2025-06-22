@@ -37,7 +37,6 @@ class RoughDrawingAgent:
         self.canvas_width = canvas_width
         self.canvas_height = canvas_height
         self.shapes = []
-        self.current_mood = None
         self.color_palette = []
         self.palette_reasoning = ""
         self.composition_state = "starting"
@@ -52,24 +51,24 @@ class RoughDrawingAgent:
     #     # Describe this doodle in a sentence"""
     #     # return "You are an creative artist that likes to doodle. Generate an animal or object that you want to sketch with at most a few keywords"
 
-    def _create_mood_prompt(self) -> str:
-        """Generate prompt for LLM to choose artistic mood"""
-        return """You are a creative, expressive, opinionated artist about to create a doodle that no one has seen before.
+    # def _create_mood_prompt(self) -> str:
+    #     """Generate prompt for LLM to choose artistic mood"""
+    #     return """You are a creative, expressive, opinionated artist about to create a doodle that no one has seen before.
 
-    Choose one evocative word that captures the essence of your artistic vision for this doodle.
+    # Choose one evocative word that captures the essence of your artistic vision for this doodle.
 
-    Examples: threshold, echo, becoming, cascade, whisper, fracture, bloom, drift
+    # Examples: threshold, echo, becoming, cascade, whisper, fracture, bloom, drift
 
-    Respond with JSON:
-    {
-        "mood": "your_chosen_word"
-    }"""
+    # Respond with JSON:
+    # {
+    #     "mood": "your_chosen_word"
+    # }"""
 
     def _create_palette_prompt(self) -> str:
         """Generate prompt for LLM to choose color palette"""
-        return f"""You are an autonomous artist creating a {self.current_mood} sketch.
+        return f"""You are an autonomous artist creating a doodle.
 
-Choose a color palette that expresses the {self.current_mood} doodle.
+Choose a color palette that expresses your doodle.
 Consider color harmony, emotional impact, and visual balance.
 
 Respond with JSON:
@@ -90,7 +89,7 @@ Respond with JSON:
         else:
             canvas_context = "This is the first shape on a blank canvas."
 
-        return f"""You are an autonomous artist creating a {self.current_mood} sketch.
+        return f"""You are an autonomous artist creating a doodle.
 
 Current state:
 - Canvas: {self.canvas_width}x{self.canvas_height}
@@ -152,8 +151,8 @@ Respond with JSON:
                     {"role": "system", "content": "You are a creative artist. Respond only with valid JSON."},
                     {"role": "user", "content": content}
                 ],
-                temperature=0.9,
-                max_tokens=500
+                temperature=1.0,
+                max_tokens=6000
             )
 
             response_text = response.choices[0].message.content.strip()
@@ -264,23 +263,23 @@ Respond with JSON:
     def initialize_session(self, test_mode=True) -> Dict:
         """Initialize drawing session with mood and palette"""
         # Choose mood
-        if test_mode:
-            self.current_mood = random.choice(["geometric", "organic", "expressive", "minimal"])
-        else:
-            # mood_response = self._call_llm(self._create_mood_prompt())
-            # self.current_mood = mood_response if isinstance(mood_response, str) else "expressive"
-            mood_response = self._call_llm(self._create_mood_prompt())
-            # print(mood_response)
-            mood = list(mood_response.values())[0]
-            print(mood)
-            self.current_mood = mood
+        # if test_mode:
+        #     self.current_mood = random.choice(["geometric", "organic", "expressive", "minimal"])
+        # else:
+        #     # mood_response = self._call_llm(self._create_mood_prompt())
+        #     # self.current_mood = mood_response if isinstance(mood_response, str) else "expressive"
+        #     mood_response = self._call_llm(self._create_mood_prompt())
+        #     # print(mood_response)
+        #     mood = list(mood_response.values())[0]
+        #     print(mood)
+        #     self.current_mood = mood
 
         # Choose palette
         palette_data = self._choose_palette(test_mode)
 
         session_data = {
             "session_id": self.session_id,
-            "mood": self.current_mood,
+            # "mood": self.current_mood,
             "palette": palette_data,
             "canvas_size": {"width": self.canvas_width, "height": self.canvas_height},
             "max_shapes": self.max_shapes,
@@ -407,7 +406,6 @@ Respond with JSON:
         """Get current session summary"""
         return {
             "session_id": self.session_id,
-            "mood": self.current_mood,
             "palette": self.color_palette,
             "shapes_created": self.shape_count,
             "max_shapes": self.max_shapes,
@@ -436,7 +434,7 @@ def initialize_session():
         return jsonify({
             "success": True,
             "session": session_data,
-            "message": f"Initialized {session_data['mood']} drawing session"
+            "message": f"Initialized drawing session"
         })
 
     except Exception as e:
@@ -616,7 +614,6 @@ def demo_page():
         function updateSessionInfo(session) {
             const info = document.getElementById('sessionInfo');
             info.innerHTML = `
-                <strong>Mood:</strong> ${session.mood}<br>
                 <strong>Palette:</strong> ${session.palette ? session.palette : 'Loading...'}<br>
                 <strong>Canvas:</strong> ${session.canvas_size ? session.canvas_size.width + 'x' + session.canvas_size.height : 'Unknown'}
             `;

@@ -136,8 +136,8 @@ Respond with JSON:
                     {"role": "system", "content": "You are a creative artist. Respond only with valid JSON."},
                     {"role": "user", "content": content}
                 ],
-                temperature=0.9,
-                max_tokens=500
+                temperature=1.0,
+                max_tokens=6000
             )
 
             response_text = response.choices[0].message.content.strip()

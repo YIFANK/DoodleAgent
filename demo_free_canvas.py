@@ -40,6 +40,13 @@ def main():
 
         print("\n🖼️ Canvas is ready! The AI artist is now analyzing the blank canvas...")
 
+        # Create timestamped output directory for this run
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_output_dir = f"output/{timestamp}"
+        os.makedirs(run_output_dir, exist_ok=True)
+        print(f"📁 Created output directory: {run_output_dir}")
+
         # Let the user choose between different demo modes
         print("\nChoose a demo mode:")
         print("1. Quick Demo (3 drawing steps)")
@@ -54,12 +61,12 @@ def main():
         if choice == "1":
             # Quick demo
             print("\n🎯 Running Quick Demo...")
-            canvas.creative_session(num_iterations=3)
+            canvas.creative_session(num_iterations=3, output_dir=run_output_dir)
 
         elif choice == "2":
             # Extended demo
             print("\n🎯 Running Extended Demo...")
-            canvas.creative_session(num_iterations=7)
+            canvas.creative_session(num_iterations=7, output_dir=run_output_dir)
 
         elif choice == "3":
             # Custom demo
@@ -67,21 +74,18 @@ def main():
                 num_steps = int(input("Enter number of drawing steps: "))
                 if num_steps > 0:
                     print(f"\n🎯 Running Custom Demo with {num_steps} steps...")
-                    canvas.creative_session(num_iterations=num_steps)
+                    canvas.creative_session(num_iterations=num_steps, output_dir=run_output_dir)
                 else:
                     print("Invalid number of steps, running quick demo instead...")
-                    canvas.creative_session(num_iterations=3)
+                    canvas.creative_session(num_iterations=3, output_dir=run_output_dir)
             except ValueError:
                 print("Invalid input, running quick demo instead...")
-                canvas.creative_session(num_iterations=3)
+                canvas.creative_session(num_iterations=3, output_dir=run_output_dir)
 
         elif choice == "4":
             # Interactive demo
             print("\n🎯 Running Interactive Demo...")
             print("You can ask the AI what to draw next. Type 'quit' to stop.")
-
-            # Create output directory
-            os.makedirs("output", exist_ok=True)
 
             step = 0
             while True:
@@ -97,7 +101,7 @@ def main():
                     question = "What would you like to draw next?"
 
                 # Execute drawing step
-                canvas_file = f"output/interactive_step_{step}.png"
+                canvas_file = f"{run_output_dir}/interactive_step_{step}.png"
                 instruction = canvas.draw_from_canvas(canvas_file, question)
 
                 print(f"🎨 AI's response: {instruction.reasoning}")
@@ -109,9 +113,9 @@ def main():
                     print(f"   {i+1}. {stroke['description']}")
 
             # Save final interactive artwork
-            canvas.bridge.capture_canvas("output/interactive_final.png")
+            canvas.bridge.capture_canvas(f"{run_output_dir}/interactive_final.png")
             print(f"\n🎉 Interactive session completed!")
-            print(f"Final artwork saved as: output/interactive_final.png")
+            print(f"Final artwork saved as: {run_output_dir}/interactive_final.png")
 
         elif choice == "5":
             # Mood-based demo
@@ -119,24 +123,14 @@ def main():
             print("The AI will autonomously determine artistic moods and create drawings that express them!")
             print("Each step starts with the AI choosing a mood, then creating art that embodies that mood.")
 
-            # Create output directory
-            os.makedirs("output", exist_ok=True)
-
-            step = 0
-            while True:
-                step += 1
+            # Run for 30 automatic iterations
+            num_iterations = 30
+            for step in range(1, num_iterations + 1):
                 print(f"\n--- Mood Step {step} ---")
-
-                # Ask user if they want to continue
-                continue_choice = input("Press Enter to continue with next mood, or type 'quit' to stop: ").strip()
-
-                if continue_choice.lower() in ['quit', 'exit', 'stop']:
-                    break
-
                 print(f"🎨 AI is determining the mood for this step...")
 
                 # Execute mood-based drawing step (LLM determines mood autonomously)
-                canvas_file = f"output/mood_step_{step}.png"
+                canvas_file = f"{run_output_dir}/mood_step_{step}.png"
                 instruction = canvas.draw_from_emotion(canvas_file)  # No mood parameter - LLM chooses
 
                 print(f"🎨 AI's mood: {instruction.reasoning}")
@@ -148,9 +142,9 @@ def main():
                     print(f"   {i+1}. {stroke['description']}")
 
             # Save final mood-based artwork
-            canvas.bridge.capture_canvas("output/mood_final.png")
+            canvas.bridge.capture_canvas(f"{run_output_dir}/mood_final.png")
             print(f"\n🎉 Mood-based session completed!")
-            print(f"Final artwork saved as: output/mood_final.png")
+            print(f"Final artwork saved as: {run_output_dir}/mood_final.png")
 
         elif choice == "6":
             # Abstract demo
@@ -158,24 +152,13 @@ def main():
             print("The AI will create pure, non-representational art!")
             print("No concrete objects - just abstract shapes, lines, and pure creativity.")
 
-            # Create output directory
-            os.makedirs("output", exist_ok=True)
-
-            step = 0
-            while True:
-                step += 1
+            num_iterations = 30
+            for step in range(1, num_iterations + 1):
                 print(f"\n--- Abstract Step {step} ---")
-
-                # Ask user if they want to continue
-                continue_choice = input("Press Enter to continue with next abstract creation, or type 'quit' to stop: ").strip()
-
-                if continue_choice.lower() in ['quit', 'exit', 'stop']:
-                    break
-
                 print(f"🎨 AI is creating abstract art...")
 
                 # Execute abstract drawing step
-                canvas_file = f"output/abstract_step_{step}.png"
+                canvas_file = f"{run_output_dir}/abstract_step_{step}.png"
                 instruction = canvas.draw_from_abstract(canvas_file)
 
                 print(f"🎨 AI's abstract creation: {instruction.reasoning}")
@@ -187,16 +170,16 @@ def main():
                     print(f"   {i+1}. {stroke['description']}")
 
             # Save final abstract artwork
-            canvas.bridge.capture_canvas("output/abstract_final.png")
+            canvas.bridge.capture_canvas(f"{run_output_dir}/abstract_final.png")
             print(f"\n🎉 Abstract session completed!")
-            print(f"Final artwork saved as: output/abstract_final.png")
+            print(f"Final artwork saved as: {run_output_dir}/abstract_final.png")
 
         else:
             print("Invalid choice, running quick demo...")
-            canvas.creative_session(num_iterations=3)
+            canvas.creative_session(num_iterations=3, output_dir=run_output_dir)
 
         print(f"\n🎉 Demo completed successfully!")
-        print("Check the 'output' folder for saved artwork images.")
+        print(f"Check the '{run_output_dir}' folder for saved artwork images.")
 
     except KeyboardInterrupt:
         print("\n⚠️ Demo interrupted by user")

@@ -96,7 +96,8 @@ class DrawingAgent:
             # Create the response using Anthropic client
             response = self.client.messages.create(
                 model=self.model,
-                max_tokens=1000,
+                max_tokens=6000,
+                temperature=1,
                 messages=messages,
                 system=system_prompt
             )
@@ -242,7 +243,8 @@ class DrawingAgent:
             # Create the response using Anthropic client
             response = self.client.messages.create(
                 model=self.model,
-                max_tokens=1000,
+                max_tokens=6000,
+                temperature=1,
                 messages=messages,
                 system=system_prompt
             )

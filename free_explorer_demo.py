@@ -55,7 +55,8 @@ def main():
         
         palette_response = painter.agent.client.messages.create(
             model=painter.agent.model,
-            max_tokens=100,
+            max_tokens=6000,
+            temperature=1,
             messages=[{"role": "user", "content": palette_prompt}]
         )
         

@@ -107,7 +107,12 @@
         }
 
         .brush-btn.crayon {
-            background: linear-gradient(135deg, rgb(16,165,245), rgb(16,165,245));
+            background: linear-gradient(135deg, rgb(135,206,250), rgb(135,206,250));
+            color: white;
+        }
+
+        .brush-btn.rainbow {
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4, #45b7d1);
             color: white;
         }
 
@@ -588,49 +593,39 @@
         }
 
         function crayon() {
-            // Create crayon effect with bleeding - monochromatic aqua
-            const baseColor = [16, 165, 245];
+            // Crayon with light blue color and consistent texture
+            const baseColor = [178, 34, 34]; // dark red
             
             // Main opaque stroke
             fill(baseColor[0], baseColor[1], baseColor[2], 200);
             noStroke();
-
+            
             const distance = dist(mouseX, mouseY, pmouseX, pmouseY);
-            const maxSize = 100; // Maximum circle size in pixels
-            const circleSize = Math.min(distance, maxSize);
-            const midX = (mouseX + pmouseX) / 2;
-            const midY = (mouseY + pmouseY) / 2;
-
-            circle(midX, midY, circleSize);
             const steps = Math.max(1, Math.floor(distance / 3));
             
             for (let i = 0; i <= steps; i++) {
                 const x = lerp(pmouseX, mouseX, i / steps);
                 const y = lerp(pmouseY, mouseY, i / steps);
                 
-                // Main brush stroke
+                // Main brush stroke - consistent size
                 circle(x, y, 12);
                 
-                // Bleeding effect - multiple smaller circles around the main stroke
+                // Texture effect - consistent sizes with light blue
                 for (let j = 0; j < 8; j++) {
-                    const bleedX = x + random(-15, 15);
-                    const bleedY = y + random(-15, 15);
-                    const bleedSize = random(3, 8);
-                    const bleedAlpha = random(50, 120);
+                    const textureX = x + random(-15, 15);
+                    const textureY = y + random(-15, 15);
                     
-                    fill(baseColor[0], baseColor[1], baseColor[2], bleedAlpha);
-                    circle(bleedX, bleedY, bleedSize);
+                    fill(baseColor[0], baseColor[1], baseColor[2], 100);
+                    circle(textureX, textureY, 6); // Fixed size
                 }
                 
-                // Additional subtle bleeding for more realistic effect
+                // Additional subtle texture - consistent sizes with light blue
                 for (let k = 0; k < 4; k++) {
-                    const bleedX2 = x + random(-25, 25);
-                    const bleedY2 = y + random(-25, 25);
-                    const bleedSize2 = random(1, 4);
-                    const bleedAlpha2 = random(20, 60);
+                    const textureX2 = x + random(-25, 25);
+                    const textureY2 = y + random(-25, 25);
                     
-                    fill(baseColor[0], baseColor[1], baseColor[2], bleedAlpha2);
-                    circle(bleedX2, bleedY2, bleedSize2);
+                    fill(baseColor[0], baseColor[1], baseColor[2], 50);
+                    circle(textureX2, textureY2, 3); // Fixed size
                 }
             }
         }
