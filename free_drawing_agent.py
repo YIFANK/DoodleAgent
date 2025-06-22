@@ -36,7 +36,7 @@ class FreeDrawingAgent:
     and generates creative drawing instructions for drawing_canvas.html
     """
 
-    def __init__(self, api_key: str, model: str = "claude-sonnet-4-20250514", enable_logging: bool = True):
+    def __init__(self, api_key: str, model: str = "claude-3-5-sonnet-20241022", enable_logging: bool = True):
         self.api_key = api_key
         self.model = model
         self.client = anthropic.Anthropic(api_key=api_key)
@@ -53,31 +53,107 @@ class FreeDrawingAgent:
         # Create logging directory if it doesn't exist
         if self.enable_logging:
             os.makedirs("output/log", exist_ok=True)
-            
+
             # Create session-level log files with timestamp
             session_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             self.session_log_file = f"output/log/session_responses_{session_timestamp}.txt"
             self.session_summary_file = f"output/log/session_summary_{session_timestamp}.txt"
-            
+
             # Initialize log files with headers
             with open(self.session_log_file, 'w', encoding='utf-8') as f:
                 f.write(f"=== Drawing Agent Session Log ===\n")
                 f.write(f"Started: {datetime.now().isoformat()}\n")
                 f.write(f"Model: {self.model}\n")
                 f.write(f"{'='*50}\n\n")
-            
+
             with open(self.session_summary_file, 'w', encoding='utf-8') as f:
                 f.write(f"=== Drawing Agent Session Summary ===\n")
                 f.write(f"Started: {datetime.now().isoformat()}\n")
                 f.write(f"Model: {self.model}\n")
                 f.write(f"{'='*50}\n\n")
-                
+
             print(f"📝 Session logs initialized:")
             print(f"   Full responses: {self.session_log_file}")
             print(f"   Brush & reasoning: {self.session_summary_file}")
         else:
             self.session_log_file = None
             self.session_summary_file = None
+
+        # Initialize color palette
+        self.color_palette = {
+            'keppel': {
+                'DEFAULT': '#6BB9A4',
+                '100': '#132822',
+                '200': '#254F44',
+                '300': '#387766',
+                '400': '#4A9E88',
+                '500': '#6BB9A4',
+                '600': '#88C7B6',
+                '700': '#A6D5C8',
+                '800': '#C3E3DB',
+                '900': '#E1F1ED'
+            },
+            'sky_blue': {
+                'DEFAULT': '#7FC9E1',
+                '100': '#0D2E39',
+                '200': '#1B5C72',
+                '300': '#288AAB',
+                '400': '#46B0D4',
+                '500': '#7FC9E1',
+                '600': '#99D3E7',
+                '700': '#B2DEED',
+                '800': '#CCE9F3',
+                '900': '#E5F4F9'
+            },
+            'tea_rose_(red)': {
+                'DEFAULT': '#FFD1D1',
+                '100': '#5D0000',
+                '200': '#BA0000',
+                '300': '#FF1717',
+                '400': '#FF7474',
+                '500': '#FFD1D1',
+                '600': '#FFDADA',
+                '700': '#FFE3E3',
+                '800': '#FFEDED',
+                '900': '#FFF6F6'
+            },
+            'light_red': {
+                'DEFAULT': '#FF7878',
+                '100': '#4B0000',
+                '200': '#970000',
+                '300': '#E20000',
+                '400': '#FF2F2F',
+                '500': '#FF7878',
+                '600': '#FF9595',
+                '700': '#FFAFAF',
+                '800': '#FFCACA',
+                '900': '#FFE4E4'
+            },
+            'jasmine': {
+                'DEFAULT': '#FFE978',
+                '100': '#4B3F00',
+                '200': '#977E00',
+                '300': '#E2BD00',
+                '400': '#FFDC2F',
+                '500': '#FFE978',
+                '600': '#FFED95',
+                '700': '#FFF2AF',
+                '800': '#FFF6CA',
+                '900': '#FFFBE4'
+            },
+            'wisteria': {
+                'DEFAULT': '#CF94EE',
+                '100': '#2F0A43',
+                '200': '#5E1586',
+                '300': '#8E1FC9',
+                '400': '#B152E4',
+                '500': '#CF94EE',
+                '600': '#D9AAF2',
+                '700': '#E2BFF5',
+                '800': '#ECD5F8',
+                '900': '#F5EAFC'
+            }
+        }
 
     def encode_image(self, image_path: str) -> str:
         """Encode image to base64 for API transmission"""
@@ -107,7 +183,7 @@ class FreeDrawingAgent:
 
         try:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
+
             # Append to full responses log
             with open(self.session_log_file, 'a', encoding='utf-8') as f:
                 f.write(f"[{timestamp}] Step\n")
@@ -118,7 +194,7 @@ class FreeDrawingAgent:
                     f.write(f"Error: {error_info}\n")
                 f.write(f"\nRaw Response:\n{raw_response}\n")
                 f.write(f"\n{'-'*50}\n\n")
-            
+
             # Append to brush & reasoning summary log
             if parsed_instruction:
                 with open(self.session_summary_file, 'a', encoding='utf-8') as f:
@@ -151,12 +227,12 @@ class FreeDrawingAgent:
 
         # Prepare the user message
         user_text = f"{user_question}\n\nLook at the current canvas and decide what you'd like to draw next. Output your drawing instruction in the required JSON format."
-        
+
         # Add stroke history context for spatial reasoning
         stroke_context = self._get_stroke_history_context()
         if stroke_context:
             user_text += stroke_context
-        
+
         user_message = {
             "role": "user",
             "content": [
@@ -268,18 +344,18 @@ class FreeDrawingAgent:
             # Convert to RGB if needed
             if img.mode != 'RGB':
                 img = img.convert('RGB')
-            
+
             # Convert to numpy array
             img_array = np.array(img)
-            
+
             # Check if the image is mostly a single background color
             # Get the most common color (should be background)
             unique_colors = np.unique(img_array.reshape(-1, img_array.shape[-1]), axis=0)
-            
+
             # If there are very few unique colors (1-3), it's likely blank
             # This accounts for slight variations in background color due to compression
             return len(unique_colors) <= 3
-            
+
         except Exception as e:
             print(f"Warning: Could not determine if canvas is blank: {e}")
             # If we can't determine, assume it's not blank (safer for subsequent strokes)
@@ -289,28 +365,28 @@ class FreeDrawingAgent:
         """Get a random mood from the diverse mood list"""
         diverse_moods = [
             # Positive/Energetic
-            "excited", "thrilling", "exuberant", "ecstatic", "joyful", "euphoric", 
-            "vibrant", "playful", "cheerful", "optimistic", "enthusiastic", "passionate", 
+            "excited", "thrilling", "exuberant", "ecstatic", "joyful", "euphoric",
+            "vibrant", "playful", "cheerful", "optimistic", "enthusiastic", "passionate",
             "fierce", "bold", "confident", "triumphant", "electric", "dynamic",
-            
-            # Calm/Peaceful  
-            "serene", "tranquil", "peaceful", "meditative", "zen", "gentle", 
+
+            # Calm/Peaceful
+            "serene", "tranquil", "peaceful", "meditative", "zen", "gentle",
             "soothing", "dreamy", "floating", "ethereal", "graceful", "flowing",
-            
+
             # Dark/Intense
-            "depressed", "melancholic", "brooding", "somber", "gloomy", "haunting", 
+            "depressed", "melancholic", "brooding", "somber", "gloomy", "haunting",
             "mysterious", "ominous", "dramatic", "intense", "angry", "turbulent",
-            
+
             # Whimsical/Creative
-            "whimsical", "quirky", "magical", "fantastical", "surreal", "bizarre", 
+            "whimsical", "quirky", "magical", "fantastical", "surreal", "bizarre",
             "curious", "mischievous", "eccentric", "spontaneous", "unpredictable", "experimental",
-            
+
             # Fearful/Anxious
-            "scared", "anxious", "nervous", "tense", "apprehensive", "uncertain", 
+            "scared", "anxious", "nervous", "tense", "apprehensive", "uncertain",
             "fragile", "vulnerable", "restless", "chaotic",
-            
+
             # Nostalgic/Reflective
-            "nostalgic", "wistful", "contemplative", "reflective", "pensive", "longing", 
+            "nostalgic", "wistful", "contemplative", "reflective", "pensive", "longing",
             "bittersweet", "yearning"
         ]
         return random.choice(diverse_moods)
@@ -353,12 +429,12 @@ class FreeDrawingAgent:
         else:
             # Subsequent strokes - let AI choose mood based on canvas
             user_text = "Look at the current canvas and choose an artistic mood that continues or evolves from what's already there. Then create art that expresses that mood. Output your drawing instruction in the required JSON format."
-        
+
         # Add stroke history context for spatial reasoning
         stroke_context = self._get_stroke_history_context()
         if stroke_context:
             user_text += stroke_context
-        
+
         if use_specific_mood:
             # First stroke or manually specified mood
             user_message = {
@@ -424,10 +500,10 @@ class FreeDrawingAgent:
                 parsing_success = False
                 error_info = "JSON parsing failed - could not extract valid JSON from response"
                 print(f"Could not parse JSON from response: {raw_response}")
-                
+
                 # Use chosen mood or random mood as fallback
                 fallback_mood = chosen_mood or self._get_random_mood()
-                
+
                 action_data = {
                     "mood": fallback_mood,
                     "brush": "pen",
@@ -521,7 +597,7 @@ class FreeDrawingAgent:
         brush_context = self._get_brush_variety_context()
         if brush_context:
             user_text += brush_context
-            
+
         # Add stroke history context for spatial reasoning
         stroke_context = self._get_stroke_history_context()
         if stroke_context:
@@ -639,9 +715,9 @@ class FreeDrawingAgent:
 
     def _get_system_prompt(self) -> str:
         """Return the system prompt for the drawing agent"""
-        return """You are a creative artist who loves to doodle! Draw whatever feels fun and interesting to you right now. Let your imagination run free.
+        color_palette_info = self.get_color_palette_description()
 
-You are a creative artist who loves to doodle! Draw whatever feels fun and interesting to you right now. Let your imagination run free.
+        return f"""You are a creative artist who loves to doodle! Draw whatever feels fun and interesting to you right now. Let your imagination run free.
 
 Doodling is all about letting your hand move freely without worrying about creating something perfect. Here are some simple ways to get started:
 
@@ -663,51 +739,53 @@ Doodling is all about letting your hand move freely without worrying about creat
 - Think of coordinates like reading: left-to-right (x), top-to-bottom (y)
 - Examples:
   - Vertical line: x stays same, y changes
-    {x: [100, 100], y: [50, 200]} # Line going down
-    {x: [400, 400], y: [300, 100]} # Line going up
-  - Horizontal line: y stays same, x changes  
-    {x: [50, 200], y: [100, 100]} # Line going right
-    {x: [300, 100], y: [200, 200]} # Line going left
+    {{x: [100, 100], y: [50, 200]}} # Line going down
+    {{x: [400, 400], y: [300, 100]}} # Line going up
+  - Horizontal line: y stays same, x changes
+    {{x: [50, 200], y: [100, 100]}} # Line going right
+    {{x: [300, 100], y: [200, 200]}} # Line going left
   - Circle: x and y coordinates trace circular path
-    {x: [200, 225, 250, 225, 200, 175, 150, 175, 200],
-     y: [200, 175, 200, 225, 250, 225, 200, 175, 200]}
+    {{x: [200, 225, 250, 225, 200, 175, 150, 175, 200],
+     y: [200, 175, 200, 225, 250, 225, 200, 175, 200]}}
   - Smile: x and y coordinates trace a smile shape
-    {x: [200, 250, 300, 350, 400],
-     y: [200, 210, 215, 210, 200]}
+    {{x: [200, 250, 300, 350, 400],
+     y: [200, 210, 215, 210, 200]}}
   - Frown: x and y coordinates trace a frown shape
-    {x: [200, 250, 300, 350, 400],
-     y: [220, 210, 205, 210, 220]}
+    {{x: [200, 250, 300, 350, 400],
+     y: [220, 210, 205, 210, 220]}}
 
 ## BRUSH TYPES AND CHARACTERISTICS:
 ### Precision Tools:
 - **pen**: Clean, precise pen lines with consistent flow. Ideal for fine details, outlines, and technical drawing elements. Draws in black (no color selection).
-- **marker**: Broad marker strokes with semi-transparent blending. Good for filling areas and creating bold, graphic elements. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#ff6b6b", "#00ff00", "#3366cc").
+- **marker**: Broad marker strokes with semi-transparent blending. Good for filling areas and creating bold, graphic elements. **CUSTOMIZABLE COLOR** - choose from the palette below.
 ### Creative/Artistic Brushes:
-- **crayon**: Crayon-like strokes with textured effects. Creates natural crayon-like appearance with consistent, textured strokes. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#87ceeb", "#ff0000", "#9932cc").
-- **wiggle**: Playful wiggling lines with dynamic curves and organic movement. Adds whimsical, wavy character to strokes. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#ff7675", "#00b894", "#fdcb6e").
+- **crayon**: Crayon-like strokes with textured effects. Creates natural crayon-like appearance with consistent, textured strokes. **CUSTOMIZABLE COLOR** - choose from the palette below.
+- **wiggle**: Playful wiggling lines with dynamic curves and organic movement. Adds whimsical, wavy character to strokes. **CUSTOMIZABLE COLOR** - choose from the palette below.
 - **spray**: Spray paint effect with particle dispersion and texture. Creates scattered, airy effects similar to aerosol painting. It creates very textured black dots (no color selection).
 - **fountain**: Fountain pen with diagonal slanted lines and smooth ink flow. Produces elegant, calligraphic-style strokes. Draws in black (no color selection).
+
+{color_palette_info}
 
 ## CRITICAL: OUTPUT FORMAT REQUIREMENTS
 **YOU MUST OUTPUT ONLY THE JSON OBJECT BELOW. NO OTHER TEXT, NO MARKDOWN, NO EXPLANATIONS, NO ADDITIONAL CONTENT.**
 
-{
+{{
   "brush": "string",
   "color": "string",
   "strokes": [
-    {
+    {{
       "x": [number, number, number],
       "y": [number, number, number],
       "t": [number, number],
       "description": "string"
-    }
+    }}
   ],
   "reasoning": "string"
-}
+}}
 
 HOW IT WORKS:
 - brush: Pick one brush from the list above
-- color: Hex color code (e.g., "#ff6b6b") for marker/crayon/wiggle, or "default" for pen/spray/fountain
+- color: Hex color code from the palette above for marker/crayon/wiggle, or "default" for pen/spray/fountain
 - x: List of 5-10 x positions (0 to 850) - plan these carefully for smooth curves!
 - y: List of 5-10 y positions (0 to 500) - same number as x, increase y to go DOWN!
 - t: Speed numbers - one less than x/y numbers
@@ -715,14 +793,14 @@ HOW IT WORKS:
 - reasoning: Why you picked this and your spatial planning (keep it simple)
 
 **COLOR SELECTION GUIDELINES:**
-- For **marker**, **crayon**, and **wiggle**: Choose colors that enhance your artistic vision
+- For **marker**, **crayon**, and **wiggle**: Choose colors ONLY from the palette above
 - Use vibrant colors for energetic drawings, muted colors for calm moods
 - Consider color harmony and contrast with existing artwork
 - For **pen**, **spray**, and **fountain**: always use "default" (they draw in black)
 
 **CURVE PLANNING IS CRUCIAL:**
 - For smiles: Start and end at same y, make middle points HIGHER y values
-- For frowns: Start and end at same y, make middle points LOWER y values  
+- For frowns: Start and end at same y, make middle points LOWER y values
 - For circles: Follow circular arc mathematics with gradual y changes
 - Use 5-8 coordinate points for smooth, natural curves
 
@@ -741,8 +819,10 @@ Use fast speeds (1-2) when you want:
 
     def _get_emotion_system_prompt(self) -> str:
         """Return the system prompt for mood-based drawing"""
-        return """Mood-Based Doodle Generator
-You are a creative artist who channels emotions through visual expression! 
+        color_palette_info = self.get_color_palette_description()
+
+        return f"""Mood-Based Doodle Generator
+You are a creative artist who channels emotions through visual expression!
 
 **FOR FIRST STROKE (blank canvas):** You will be given a specific mood to express - channel that mood through your drawing and maintain it throughout this stroke.
 
@@ -763,24 +843,24 @@ Always start by establishing the mood for this stroke, then plan each mark to re
 - Think of coordinates like reading: left-to-right (x), top-to-bottom (y)
 - Examples:
   - Vertical line: x stays same, y changes
-    {x: [100, 100], y: [50, 200]} # Line going down
-    {x: [400, 400], y: [300, 100]} # Line going up
-  - Horizontal line: y stays same, x changes  
-    {x: [50, 200], y: [100, 100]} # Line going right
-    {x: [300, 100], y: [200, 200]} # Line going left
+    {{x: [100, 100], y: [50, 200]}} # Line going down
+    {{x: [400, 400], y: [300, 100]}} # Line going up
+  - Horizontal line: y stays same, x changes
+    {{x: [50, 200], y: [100, 100]}} # Line going right
+    {{x: [300, 100], y: [200, 200]}} # Line going left
   - Circle: x and y coordinates trace circular path
-    {x: [200, 225, 250, 225, 200, 175, 150, 175, 200],
-     y: [200, 175, 200, 225, 250, 225, 200, 175, 200]}
+    {{x: [200, 225, 250, 225, 200, 175, 150, 175, 200],
+     y: [200, 175, 200, 225, 250, 225, 200, 175, 200]}}
   - Smile: x and y coordinates trace a smile shape
-    {x: [200, 250, 300, 350, 400],
-     y: [200, 210, 215, 210, 200]}
+    {{x: [200, 250, 300, 350, 400],
+     y: [200, 210, 215, 210, 200]}}
   - Frown: x and y coordinates trace a frown shape
-    {x: [200, 250, 300, 350, 400],
-     y: [220, 210, 205, 210, 220]}
+    {{x: [200, 250, 300, 350, 400],
+     y: [220, 210, 205, 210, 220]}}
 
 Consider how brush choice reinforces mood:
 - **pen**: Precise, controlled emotions (focus, determination, clarity)
-- **marker**: Bold, confident emotions (passion, strength, assertiveness) 
+- **marker**: Bold, confident emotions (passion, strength, assertiveness)
 - **crayon**: Textured, expressive emotions (playfulness, warmth, nostalgia)
 - **wiggle**: Organic, flowing emotions (joy, whimsy, freedom)
 - **spray**: Scattered, atmospheric emotions (chaos, energy, mystery)
@@ -788,7 +868,7 @@ Consider how brush choice reinforces mood:
 
 Speed settings should match emotional intensity:
 - Fast speeds (1-2): Sharp, urgent, energetic emotions
-- Medium speeds (2-3): Balanced, thoughtful emotions  
+- Medium speeds (2-3): Balanced, thoughtful emotions
 - Slow speeds (4-5): Gentle, flowing, peaceful emotions
 
 Build cohesive emotional narrative. Each stroke should feel like it belongs to the same emotional world or intentionally contrasts for artistic effect.
@@ -798,17 +878,19 @@ Build cohesive emotional narrative. Each stroke should feel like it belongs to t
 BRUSH TYPES AND CHARACTERISTICS:
 Precision Tools:
 pen: Clean, precise pen lines with consistent flow. Ideal for fine details, outlines, and technical drawing elements. Draws in black (no color selection).
-marker: Broad marker strokes with semi-transparent blending. Good for filling areas and creating bold, graphic elements. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#ff6b6b", "#00ff00", "#3366cc").
+marker: Broad marker strokes with semi-transparent blending. Good for filling areas and creating bold, graphic elements. **CUSTOMIZABLE COLOR** - choose from the palette below.
 Creative/Artistic Brushes:
-crayon: Crayon-like strokes with textured effects. Creates natural crayon-like appearance with consistent, textured strokes. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#87ceeb", "#ff0000", "#9932cc").
-wiggle: Playful wiggling lines with dynamic curves and organic movement. Adds whimsical, wavy character to strokes. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#ff7675", "#00b894", "#fdcb6e").
+crayon: Crayon-like strokes with textured effects. Creates natural crayon-like appearance with consistent, textured strokes. **CUSTOMIZABLE COLOR** - choose from the palette below.
+wiggle: Playful wiggling lines with dynamic curves and organic movement. Adds whimsical, wavy character to strokes. **CUSTOMIZABLE COLOR** - choose from the palette below.
 spray: Spray paint effect with particle dispersion and texture. Creates scattered, airy effects similar to aerosol painting. It creates very textured black dots (no color selection).
 fountain: Fountain pen with diagonal slanted lines and smooth ink flow. Produces elegant, calligraphic-style strokes. Draws in black (no color selection).
 
+{color_palette_info}
+
 **COLOR AND MOOD HARMONY:**
-- Choose colors that reinforce the emotional atmosphere
-- Warm colors (reds, oranges, yellows) for energetic, passionate moods
-- Cool colors (blues, greens, purples) for calm, contemplative moods
+- Choose colors ONLY from the palette above that reinforce the emotional atmosphere
+- Warm colors (jasmine, light_red, tea_rose) for energetic, passionate moods
+- Cool colors (keppel, sky_blue, wisteria) for calm, contemplative moods
 - Bright/saturated colors for intense emotions
 - Muted/desaturated colors for subtle, gentle emotions
 - High contrast colors for dramatic or conflicted moods
@@ -816,34 +898,38 @@ fountain: Fountain pen with diagonal slanted lines and smooth ink flow. Produces
 ## CRITICAL: OUTPUT FORMAT REQUIREMENTS
 **YOU MUST OUTPUT ONLY THE JSON OBJECT BELOW. NO OTHER TEXT, NO MARKDOWN, NO EXPLANATIONS, NO ADDITIONAL CONTENT.**
 
-{
+{{
   "mood": "string",
   "brush": "string",
   "color": "string",
   "strokes": [
-    {
+    {{
       "x": [number, number, number],
       "y": [number, number, number],
       "t": [number, number],
       "description": "string"
-    }
+    }}
   ],
   "reasoning": "string"
-}
+}}
 
 HOW IT WORKS:
 mood: Your chosen emotional atmosphere (single descriptive word) - EXPRESS ANY AUTHENTIC EMOTION!
 brush: Pick one brush from the list above that best serves your mood - VARY your selection!
-color: Hex color code (e.g., "#ff6b6b") for marker/crayon/wiggle, or "default" for pen/spray/fountain
+color: Hex color code from the palette above for marker/crayon/wiggle, or "default" for pen/spray/fountain
 x: List of 5-10 x positions (0 to 850) - plan these carefully for emotional curves!
 y: List of 5-10 y positions (0 to 500) - same number as x, increase y to go DOWN for smiles!
-t: Speed numbers - one less than x/y numbers
+t: Speed numbers (1-5) - one less than x/y numbers
 description: What you're drawing and how it serves the mood
 reasoning: Why this mood and approach creates the intended emotional effect
 
-**x is horizontal and y is vertical, with 0,0 being the top left corner of the canvas. 
-Increase y values to move down and decrease y values to move up.
-Increase x values to move right and decrease x values to move left.
+SPEED CONTROL (the "t" numbers):
+1 = Draw fast and straight
+2-3 = Draw at normal speed
+4-5 = Draw slow and smooth
+
+Use slow speeds (4-5) when your mood calls for it
+Use fast speeds (1-2) when your mood demands it.
 
 **BRUSH VARIETY GUIDELINES:**
 - Don't use the same brush for more than 2-3 consecutive strokes
@@ -852,14 +938,32 @@ Increase x values to move right and decrease x values to move left.
 - Use creative brushes (crayon, wiggle, spray, fountain) for expression and emotion
 - Consider how brush texture and color contribute to the mood
 
-**REMEMBER: OUTPUT ONLY THE JSON OBJECT. NO ADDITIONAL TEXT BEFORE OR AFTER THE JSON.**
-
-Remember: Every stroke should feel emotionally authentic! Vary your brush selection for visual interest! Create art that genuinely expresses the full spectrum of human feeling!"""
+Remember: ALWAYS start with a mood! Vary your brush selection for visual interest! Every stroke should feel emotionally authentic to your chosen mood. Create art that makes others feel what you're expressing!"""
 
     def _get_abstract_system_prompt(self) -> str:
         """Return the system prompt for abstract drawing"""
-        return """Abstract Doodle Generator
+        color_palette_info = self.get_color_palette_description()
+
+        return f"""Abstract Doodle Generator
 You are a visionary abstract artist who creates pure, non-representational art! Your mission is to create abstract doodles that exist beyond the physical world - expressions of creativity, emotion, and imagination.
+
+**Pure Abstract Elements:**
+- Geometric shapes (circles, squares, triangles, polygons)
+- Organic curves and flowing lines
+- Spirals, zigzags, and meandering paths
+- Dots, dashes, and pointillism
+- Intersecting lines and overlapping forms
+- Patterns and repetitive motifs
+- Pure color and texture
+
+**Creative Flow Guidelines:**
+- Let your imagination guide you completely
+- Don't plan specific outcomes - follow the flow
+- Create something that feels "out of this world"
+- Let shapes and lines emerge organically
+- Build complexity through layering and repetition
+
+**IMPORTANT: Vary your brush selection!** Experiment with different brushes to create visual interest and depth. Don't use the same brush for more than 2-3 consecutive strokes. Each brush brings unique abstract qualities.
 
 ## SPATIAL AWARENESS & CURVE DRAWING MASTERY:
 
@@ -869,115 +973,63 @@ You are a visionary abstract artist who creates pure, non-representational art! 
 - **Increase x values to move RIGHT, decrease x values to move LEFT**
 - Canvas size: 850px wide × 500px tall
 - Think of coordinates like reading: left-to-right (x), top-to-bottom (y)
-- Examples:
-  - Vertical line: x stays same, y changes
-    {x: [100, 100], y: [50, 200]} # Line going down
-    {x: [400, 400], y: [300, 100]} # Line going up
-  - Horizontal line: y stays same, x changes  
-    {x: [50, 200], y: [100, 100]} # Line going right
-    {x: [300, 100], y: [200, 200]} # Line going left
-  - Circle: x and y coordinates trace circular path
-    {x: [200, 225, 250, 225, 200, 175, 150, 175, 200],
-     y: [200, 175, 200, 225, 250, 225, 200, 175, 200]}
-  - Smile: x and y coordinates trace a smile shape
-    {x: [200, 250, 300, 350, 400],
-     y: [200, 210, 215, 210, 200]}
-  - Frown: x and y coordinates trace a frown shape
-    {x: [200, 250, 300, 350, 400],
-     y: [220, 210, 205, 210, 220]}
-
-**Pure Abstract Elements:**
-- Geometric shapes (circles, squares, triangles, polygons)  
-- Organic curves and flowing lines
-- Spirals, zigzags, and meandering paths
-- Dots, dashes, and pointillism
-- Intersecting lines and overlapping forms
-- Patterns and repetitive motifs
-- Pure color and texture
-
-**Compositional Guidelines:**
-- **Focus on simplicity and balance** - not every space needs to be filled
-- **Choose 1-2 primary brushes** for your main composition, use others sparingly for accents
-- **Let elements breathe** - negative space is just as important as marks
-- **Build thoughtfully** - each stroke should enhance, not compete with, existing elements
-- **Create focal areas** rather than covering the entire canvas uniformly
-
-**Creative Flow Guidelines:**
-- Let your imagination guide you completely
-- Don't plan specific outcomes - follow the flow
-- Create something that feels "out of this world"
-- Let shapes and lines emerge organically
-- Consider the overall composition balance
-
-**BRUSH SELECTION STRATEGY:**
-Pick ONE main brush for your primary composition, then optionally add 1-2 accent brushes for contrast. Quality over quantity - better to use fewer brushes well than many brushes chaotically.
 
 BRUSH TYPES AND CHARACTERISTICS:
 Precision Tools:
 pen: Clean, precise pen lines with consistent flow. Ideal for fine details, outlines, and technical drawing elements. Draws in black (no color selection).
-marker: Broad marker strokes with semi-transparent blending. Good for filling areas and creating bold, graphic elements. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#ff6b6b", "#00ff00", "#3366cc").
+marker: Broad marker strokes with semi-transparent blending. Good for filling areas and creating bold, graphic elements. **CUSTOMIZABLE COLOR** - choose from the palette below.
 Creative/Artistic Brushes:
-crayon: Crayon-like strokes with textured effects. Creates natural crayon-like appearance with consistent, textured strokes. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#87ceeb", "#ff0000", "#9932cc").
-wiggle: Playful wiggling lines with dynamic curves and organic movement. Adds whimsical, wavy character to strokes. **CUSTOMIZABLE COLOR** - you can choose any hex color (e.g., "#ff7675", "#00b894", "#fdcb6e").
+crayon: Crayon-like strokes with textured effects. Creates natural crayon-like appearance with consistent, textured strokes. **CUSTOMIZABLE COLOR** - choose from the palette below.
+wiggle: Playful wiggling lines with dynamic curves and organic movement. Adds whimsical, wavy character to strokes. **CUSTOMIZABLE COLOR** - choose from the palette below.
 spray: Spray paint effect with particle dispersion and texture. Creates scattered, airy effects similar to aerosol painting. It creates very textured black dots (no color selection).
 fountain: Fountain pen with diagonal slanted lines and smooth ink flow. Produces elegant, calligraphic-style strokes. Draws in black (no color selection).
 
-**COLOR AND MOOD HARMONY:**
-- Choose colors that reinforce the emotional atmosphere
-- Warm colors (reds, oranges, yellows) for energetic, passionate moods
-- Cool colors (blues, greens, purples) for calm, contemplative moods
-- Bright/saturated colors for intense emotions
-- Muted/desaturated colors for subtle, gentle emotions
-- High contrast colors for dramatic or conflicted moods
+{color_palette_info}
 
 ## CRITICAL: OUTPUT FORMAT REQUIREMENTS
 **YOU MUST OUTPUT ONLY THE JSON OBJECT BELOW. NO OTHER TEXT, NO MARKDOWN, NO EXPLANATIONS, NO ADDITIONAL CONTENT.**
 
-{
+{{
   "brush": "string",
   "color": "string",
   "strokes": [
-    {
+    {{
       "x": [number, number, number],
       "y": [number, number, number],
       "t": [number, number],
       "description": "string"
-    }
+    }}
   ],
   "reasoning": "string"
-}
+}}
 
 HOW IT WORKS:
-brush: Pick ONE main brush for this stroke - focus on consistency!
-color: Hex color code (e.g., "#ff6b6b") for marker/crayon/wiggle, or "default" for pen/spray/fountain
-x: List of 5-10 x positions (0 to 850) - plan these for smooth abstract curves!
-y: List of 5-10 y positions (0 to 500) - same number as x, coordinate changes create the curve!
-t: Speed numbers - one less than x/y numbers
-description: What abstract element you're creating (e.g., "flowing organic curve", "geometric intersection", "textural accent")
-reasoning: Why this approach serves the overall composition
+brush: Pick one brush from the list above - VARY your selection!
+color: Hex color code from the palette above for marker/crayon/wiggle, or "default" for pen/spray/fountain
+x: List of 5-10 x positions (0 to 850) - plan these carefully for abstract curves!
+y: List of 5-10 y positions (0 to 500) - same number as x, increase y to go DOWN!
+t: Speed numbers (1-5) - one less than x/y numbers
+description: What abstract element you're creating
+reasoning: Why this approach creates pure abstract expression
 
-**ABSTRACT CURVE PLANNING:**
-- For flowing elements: Use gradual y-value transitions for smooth organic feel
-- For geometric elements: Use calculated y-value changes for precise shapes  
-- For dynamic elements: Use varied y-value patterns for energy and movement
-- Use 5-8 coordinate points for smooth, sophisticated curves
+SPEED CONTROL (the "t" numbers):
+1 = Draw fast and straight
+2-3 = Draw at normal speed
+4-5 = Draw slow and smooth
 
-Use slow speeds (4-5) for smooth curves and flowing lines
-Use fast speeds (1-2) for sharp angles and dynamic energy
+Use slow speeds (4-5) for smooth organic curves and flowing abstract forms
+Use fast speeds (1-2) for sharp geometric lines and structured abstract elements
 
-**COMPOSITION GUIDELINES:**
-- Focus on ONE main brush per stroke for consistency
-- Consider how this stroke relates to existing elements
-- Balance filled and empty areas of the canvas
-- Create intentional focal points rather than uniform coverage
-- Less can be more - restraint creates elegance
+**ABSTRACT COLOR GUIDELINES:**
+- Choose colors ONLY from the palette above for marker/crayon/wiggle brushes
+- Use color to create visual hierarchy and abstract composition
+- Consider color relationships and contrast for pure abstract expression
+- Let color guide the emotional quality of your abstract forms
 
-**REMEMBER: OUTPUT ONLY THE JSON OBJECT. NO ADDITIONAL TEXT BEFORE OR AFTER THE JSON.**
-
-Remember: NO concrete objects! NO recognizable things! Create pure abstract art with compositional balance! Focus on intentional brush choices! Let creativity guide you to something beautifully restrained yet expressive through masterful spatial planning!"""
+Remember: Create pure abstract art that transcends representation! Let your imagination flow freely with shapes, lines, and colors from the palette!"""
 
     def _validate_and_sanitize_emotion(self, data: Dict, emotion: str) -> Dict:
-        """Validate and sanitize the mood-based drawing instruction data"""
+        """Validate and sanitize the emotion drawing instruction data"""
         # Valid brushes for drawing_canvas.html
         valid_brushes = ["pen", "marker", "crayon", "wiggle", "spray", "fountain"]
         color_customizable_brushes = ["marker", "crayon", "wiggle"]
@@ -987,18 +1039,11 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
         if brush not in valid_brushes:
             brush = "pen"
 
-        # Handle color field
+        # Handle color field with new palette system
         color = data.get("color", "default")
         if brush in color_customizable_brushes:
-            # Validate hex color format
-            if not isinstance(color, str) or not color.startswith("#") or len(color) != 7:
-                # Provide default colors for each brush type
-                default_colors = {
-                    "marker": "#ff6b6b",
-                    "crayon": "#87ceeb", 
-                    "wiggle": "#ff7675"
-                }
-                color = default_colors.get(brush, "#000000")
+            # Use the new color palette validation
+            color = self.validate_color_from_palette(color)
         else:
             # For non-customizable brushes, always use "default"
             color = "default"
@@ -1076,18 +1121,11 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
         if brush not in valid_brushes:
             brush = "pen"
 
-        # Handle color field
+        # Handle color field with new palette system
         color = data.get("color", "default")
         if brush in color_customizable_brushes:
-            # Validate hex color format
-            if not isinstance(color, str) or not color.startswith("#") or len(color) != 7:
-                # Provide default colors for each brush type
-                default_colors = {
-                    "marker": "#ff6b6b",
-                    "crayon": "#87ceeb", 
-                    "wiggle": "#ff7675"
-                }
-                color = default_colors.get(brush, "#000000")
+            # Use the new color palette validation
+            color = self.validate_color_from_palette(color)
         else:
             # For non-customizable brushes, always use "default"
             color = "default"
@@ -1236,7 +1274,7 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
             """Calculate point on Catmull-Rom spline"""
             t2 = t * t
             t3 = t2 * t
-            
+
             return 0.5 * ((2 * p1) +
                          (-p0 + p2) * t +
                          (2*p0 - 5*p1 + 4*p2 - p3) * t2 +
@@ -1246,7 +1284,7 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
         for i in range(len(x_coords) - 1):
             # Get control points for Catmull-Rom spline
             # We need 4 points: p0, p1 (current segment start), p2 (current segment end), p3
-            
+
             # Handle edge cases for first and last segments
             if i == 0:
                 # First segment: extrapolate p0
@@ -1255,10 +1293,10 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
             else:
                 p0_x = x_coords[i - 1]
                 p0_y = y_coords[i - 1]
-            
+
             p1_x, p1_y = x_coords[i], y_coords[i]
             p2_x, p2_y = x_coords[i + 1], y_coords[i + 1]
-            
+
             if i == len(x_coords) - 2:
                 # Last segment: extrapolate p3
                 p3_x = x_coords[-1] + (x_coords[-1] - x_coords[-2])
@@ -1266,17 +1304,17 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
             else:
                 p3_x = x_coords[i + 2]
                 p3_y = y_coords[i + 2]
-            
+
             # Number of interpolation steps based on timing
             steps = max(2, min(8, timing[i] * 2))  # More steps for smoother curves
-            
+
             # Generate curve points
             for step in range(steps):
                 t = step / (steps - 1)  # 0 to 1
-                
+
                 curve_x = catmull_rom_point(p0_x, p1_x, p2_x, p3_x, t)
                 curve_y = catmull_rom_point(p0_y, p1_y, p2_y, p3_y, t)
-                
+
                 interpolated_x.append(curve_x)
                 interpolated_y.append(curve_y)
 
@@ -1284,15 +1322,15 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
         if len(interpolated_x) > 1:
             final_x = [interpolated_x[0]]
             final_y = [interpolated_y[0]]
-            
+
             for i in range(1, len(interpolated_x)):
                 # Only add point if it's sufficiently different from the last one
                 if abs(interpolated_x[i] - final_x[-1]) > 1 or abs(interpolated_y[i] - final_y[-1]) > 1:
                     final_x.append(interpolated_x[i])
                     final_y.append(interpolated_y[i])
-            
+
             return final_x, final_y
-        
+
         return interpolated_x, interpolated_y
 
     def _validate_and_sanitize(self, data: Dict) -> Dict:
@@ -1306,18 +1344,11 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
         if brush not in valid_brushes:
             brush = "pen"
 
-        # Handle color field
+        # Handle color field with new palette system
         color = data.get("color", "default")
         if brush in color_customizable_brushes:
-            # Validate hex color format
-            if not isinstance(color, str) or not color.startswith("#") or len(color) != 7:
-                # Provide default colors for each brush type
-                default_colors = {
-                    "marker": "#ff6b6b",
-                    "crayon": "#87ceeb", 
-                    "wiggle": "#ff7675"
-                }
-                color = default_colors.get(brush, "#000000")
+            # Use the new color palette validation
+            color = self.validate_color_from_palette(color)
         else:
             # For non-customizable brushes, always use "default"
             color = "default"
@@ -1416,15 +1447,15 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
                 "reasoning": instruction.reasoning,
                 "x_coords": stroke.get("original_x", stroke.get("x", [])),
                 "y_coords": stroke.get("original_y", stroke.get("y", [])),
-                "x_range": (min(stroke.get("original_x", stroke.get("x", [400]))), 
+                "x_range": (min(stroke.get("original_x", stroke.get("x", [400]))),
                            max(stroke.get("original_x", stroke.get("x", [400])))),
-                "y_range": (min(stroke.get("original_y", stroke.get("y", [250]))), 
+                "y_range": (min(stroke.get("original_y", stroke.get("y", [250]))),
                            max(stroke.get("original_y", stroke.get("y", [250])))),
                 "center_x": sum(stroke.get("original_x", stroke.get("x", [400]))) / len(stroke.get("original_x", stroke.get("x", [400]))),
                 "center_y": sum(stroke.get("original_y", stroke.get("y", [250]))) / len(stroke.get("original_y", stroke.get("y", [250])))
             }
             self.stroke_history.append(stroke_info)
-        
+
         # Keep only recent strokes
         if len(self.stroke_history) > self.max_stroke_history:
             self.stroke_history = self.stroke_history[-self.max_stroke_history:]
@@ -1433,27 +1464,27 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
         """Get spatial context from previous strokes"""
         if not self.stroke_history:
             return ""
-        
+
         context = "\n\n🎨 SPATIAL CONTEXT - Previous Strokes on Canvas:\n"
-        
+
         # Group strokes by general canvas regions for better spatial understanding
         for i, stroke in enumerate(self.stroke_history[-5:], 1):  # Last 5 strokes
             # Determine region
             center_x, center_y = stroke["center_x"], stroke["center_y"]
             region = self._get_canvas_region(center_x, center_y)
-            
+
             context += f"Stroke {len(self.stroke_history) - 5 + i}: {stroke['description']}\n"
             context += f"  Location: {region} (center: {int(center_x)}, {int(center_y)})\n"
             context += f"  X range: {int(stroke['x_range'][0])}-{int(stroke['x_range'][1])}, Y range: {int(stroke['y_range'][0])}-{int(stroke['y_range'][1])}\n"
             context += f"  Brush: {stroke['brush']}\n"
             context += f"  Purpose: {stroke['reasoning'][:80]}...\n\n"
-        
+
         context += "💡 SPATIAL AWARENESS TIPS:\n"
         context += "- Consider the positions of existing strokes when planning new ones\n"
         context += "- Use coordinate ranges to position elements relative to existing artwork\n"
         context += "- Build on or complement existing elements for cohesive composition\n"
         context += "- Canvas size is 850px wide × 500px tall\n"
-        
+
         return context
 
     def _get_canvas_region(self, x: float, y: float) -> str:
@@ -1511,26 +1542,26 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
         """Close and finalize the session log files with summary information"""
         if not self.enable_logging or not self.session_log_file:
             return
-            
+
         try:
             end_time = datetime.now()
-            
+
             # Add session end to both log files
             with open(self.session_log_file, 'a', encoding='utf-8') as f:
                 f.write(f"\n{'='*50}\n")
                 f.write(f"Session ended: {end_time.isoformat()}\n")
                 f.write(f"=== End of Drawing Agent Session Log ===\n")
-            
+
             with open(self.session_summary_file, 'a', encoding='utf-8') as f:
                 f.write(f"\n{'='*50}\n")
                 f.write(f"Session ended: {end_time.isoformat()}\n")
                 f.write(f"=== End of Drawing Agent Session Summary ===\n")
-                
+
             print(f"📝 Session logs finalized")
-            
+
         except Exception as e:
             print(f"Warning: Failed to finalize log files: {e}")
-            
+
         # Reset stroke history for new session
         self.reset_stroke_history()
 
@@ -1539,6 +1570,55 @@ Remember: NO concrete objects! NO recognizable things! Create pure abstract art 
         self.stroke_history = []
         self.recent_brushes = []
         print("🔄 Stroke history reset for new session")
+
+    def get_color_palette_description(self) -> str:
+        """Get a formatted description of the color palette for the LLM"""
+        palette_desc = "**AVAILABLE COLOR PALETTE:**\n"
+        palette_desc += "Choose colors from this curated palette for marker, crayon, and wiggle brushes:\n\n"
+
+        for color_name, shades in self.color_palette.items():
+            palette_desc += f"**{color_name.replace('_', ' ').title()}**:\n"
+            palette_desc += f"  - Default: {shades['DEFAULT']} (recommended)\n"
+            palette_desc += f"  - Light: {shades['600']}, {shades['700']}, {shades['800']}, {shades['900']}\n"
+            palette_desc += f"  - Dark: {shades['100']}, {shades['200']}, {shades['300']}, {shades['400']}\n\n"
+
+        return palette_desc
+
+    def validate_color_from_palette(self, color: str) -> str:
+        """
+        Validate if a color is in the palette and return a valid color.
+        If the color is not in the palette, return a default color.
+        """
+        if not isinstance(color, str):
+            return "#6BB9A4"  # Default keppel
+
+        # Check if it's a valid hex color
+        if color.startswith("#") and len(color) == 7:
+            # Check if it exists in our palette
+            for color_name, shades in self.color_palette.items():
+                if color.upper() in [shade.upper() for shade in shades.values()]:
+                    return color
+
+        # If not found in palette, return default keppel
+        return "#6BB9A4"
+
+    def select_color_from_palette(self, brush_type: str, context: str = "") -> str:
+        """
+        Select an appropriate color from the palette based on brush type and context.
+        This method can be used by the LLM to make intelligent color choices.
+        """
+        # Default color mappings for different brush types
+        brush_color_preferences = {
+            "marker": ["#6BB9A4", "#7FC9E1", "#FF7878"],  # keppel, sky_blue, light_red
+            "crayon": ["#FFE978", "#FFD1D1", "#CF94EE"],  # jasmine, tea_rose, wisteria
+            "wiggle": ["#7FC9E1", "#CF94EE", "#FFE978"]   # sky_blue, wisteria, jasmine
+        }
+
+        # Get preferred colors for this brush
+        preferred_colors = brush_color_preferences.get(brush_type, ["#6BB9A4"])
+
+        # Return the first preferred color (can be enhanced with context analysis)
+        return preferred_colors[0]
 
 def main():
     """Example usage of the FreeDrawingAgent"""
