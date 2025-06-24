@@ -5,6 +5,9 @@ This module provides integration between the FreeDrawingAgent and the drawing_ca
 """
 
 import time
+import threading
+import imageio
+import numpy as np
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -12,9 +15,10 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from free_drawing_agent import FreeDrawingAgent, DrawingInstruction
 import base64
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import io
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -24,13 +28,28 @@ class DrawingCanvasBridge:
     """
     Bridge between the FreeDrawingAgent and the drawing_canvas.html interface.
     Handles the execution of drawing instructions on the HTML canvas.
+    Now includes real-time video capture capabilities during the drawing process.
     """
 
-    def __init__(self, canvas_url: str = None):
+    def __init__(self, canvas_url: str = None, enable_video_capture: bool = False, capture_fps: int = 30):
         self.canvas_url = canvas_url or f"file://{os.path.abspath('drawing_canvas.html')}"
         self.driver = None
         self.canvas = None
         self.wait = None
+        
+        # Video capture settings
+        self.enable_video_capture = enable_video_capture
+        self.capture_fps = capture_fps
+        self.capturing = False
+        self.frame_counter = 0
+        self.temp_dir = "temp_frames"
+        self.video_writer = None
+        self.capture_thread = None
+        
+        # Current step info for overlays
+        self.current_step_number = 0
+        self.current_step_text = ""
+        self.session_start_time = None
 
     def start_canvas_interface(self):
         """Initialize the web driver and load the drawing canvas interface"""
@@ -54,6 +73,215 @@ class DrawingCanvasBridge:
         time.sleep(2)
 
         print("Drawing canvas interface loaded successfully")
+        
+        # Initialize video capture if enabled
+        if self.enable_video_capture:
+            self._initialize_video_capture()
+
+    def _initialize_video_capture(self):
+        """Initialize video capture system"""
+        self.session_start_time = datetime.now()
+        
+        # Create temp directory for frames
+        if not os.path.exists(self.temp_dir):
+            os.makedirs(self.temp_dir)
+        else:
+            # Clean existing frames
+            for file in os.listdir(self.temp_dir):
+                if file.endswith('.png'):
+                    os.remove(os.path.join(self.temp_dir, file))
+        
+        print(f"🎥 Video capture initialized at {self.capture_fps} fps")
+
+    def start_video_capture(self, output_path: str = None):
+        """Start capturing video frames during drawing"""
+        if not self.enable_video_capture:
+            return
+            
+        if output_path is None:
+            timestamp = self.session_start_time.strftime("%Y%m%d_%H%M%S")
+            output_path = f"output/video/drawing_session_{timestamp}.mp4"
+            
+        # Ensure output directory exists
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        
+        self.video_output_path = output_path
+        self.capturing = True
+        self.frame_counter = 0
+        
+        # Start capture thread
+        self.capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
+        self.capture_thread.start()
+        
+        print(f"🎬 Started video capture: {output_path}")
+
+    def stop_video_capture(self):
+        """Stop video capture and compile video"""
+        if not self.enable_video_capture or not self.capturing:
+            return
+            
+        self.capturing = False
+        
+        # Wait for capture thread to finish
+        if self.capture_thread:
+            self.capture_thread.join(timeout=2.0)
+        
+        # Compile video from frames
+        self._compile_video()
+        
+        # Cleanup temp frames
+        self._cleanup_temp_frames()
+        
+        print(f"🎉 Video capture completed: {self.video_output_path}")
+
+    def _capture_loop(self):
+        """Continuous frame capture loop"""
+        capture_interval = 1.0 / self.capture_fps
+        
+        while self.capturing:
+            try:
+                self._capture_frame()
+                time.sleep(capture_interval)
+            except Exception as e:
+                print(f"Frame capture error: {e}")
+
+    def _capture_frame(self):
+        """Capture a single frame with text overlay"""
+        if not self.capturing or not self.driver:
+            return
+            
+        try:
+            # Use JavaScript to capture canvas
+            js_code = """
+            const canvas = document.querySelector('#p5-canvas canvas');
+            return canvas.toDataURL('image/png');
+            """
+            
+            data_url = self.driver.execute_script(js_code)
+            
+            # Remove the data URL prefix
+            image_data = data_url.split(',')[1]
+            
+            # Decode the image
+            image_bytes = base64.b64decode(image_data)
+            
+            # Convert to PIL Image
+            image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+            
+            # Add text overlay if step info is available
+            if self.current_step_number > 0:
+                image = self._add_text_overlay(image)
+            
+            # Save frame
+            frame_path = os.path.join(self.temp_dir, f"frame_{self.frame_counter:06d}.png")
+            image.save(frame_path)
+            
+            self.frame_counter += 1
+            
+        except Exception as e:
+            print(f"Error capturing frame: {e}")
+
+    def _add_text_overlay(self, image: Image.Image) -> Image.Image:
+        """Add text overlay to frame"""
+        try:
+            # Create overlay
+            overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
+            draw = ImageDraw.Draw(overlay)
+            
+            # Add semi-transparent background rectangle
+            draw.rectangle([(10, 10), (image.width - 10, 100)], fill=(0, 0, 0, 180))
+            
+            # Try to use a better font, fall back to default if not available
+            try:
+                title_font = ImageFont.truetype("arial.ttf", 28)
+                text_font = ImageFont.truetype("arial.ttf", 18)
+            except:
+                try:
+                    # Try system fonts on different platforms
+                    title_font = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 28)  # macOS
+                    text_font = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 18)
+                except:
+                    try:
+                        title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 28)  # Linux
+                        text_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
+                    except:
+                        # Use default font
+                        title_font = ImageFont.load_default()
+                        text_font = ImageFont.load_default()
+            
+            # Add step number
+            draw.text((20, 20), f"Step {self.current_step_number}", fill=(255, 255, 255, 255), font=title_font)
+            
+            # Add reasoning text (wrap if too long)
+            if self.current_step_text:
+                text_lines = self.current_step_text.split('. ')
+                y_offset = 50
+                for i, line in enumerate(text_lines[:2]):  # Max 2 lines
+                    if len(line) > 80:
+                        line = line[:77] + "..."
+                    draw.text((20, y_offset), line, fill=(255, 255, 255, 255), font=text_font)
+                    y_offset += 25
+            
+            # Combine images
+            image = Image.alpha_composite(image.convert('RGBA'), overlay)
+            return image.convert('RGB')
+            
+        except Exception as e:
+            print(f"Error adding text overlay: {e}")
+            return image
+
+    def _compile_video(self):
+        """Compile frames into MP4 video"""
+        try:
+            # Get all frame files
+            frame_files = sorted([f for f in os.listdir(self.temp_dir) if f.endswith('.png')])
+            
+            if not frame_files:
+                print("No frames to compile into video")
+                return
+            
+            print(f"🎞️ Compiling {len(frame_files)} frames into video...")
+            
+            # Create video writer
+            writer = imageio.get_writer(self.video_output_path, fps=self.capture_fps, 
+                                     codec='libx264', quality=8)
+            
+            try:
+                for i, frame_file in enumerate(frame_files):
+                    frame_path = os.path.join(self.temp_dir, frame_file)
+                    frame = imageio.imread(frame_path)
+                    writer.append_data(frame)
+                    
+                    # Progress indicator
+                    if (i + 1) % 100 == 0:
+                        print(f"  Processed {i + 1}/{len(frame_files)} frames...")
+            
+            finally:
+                writer.close()
+            
+            # Calculate video duration
+            video_duration = len(frame_files) / self.capture_fps
+            print(f"📹 Video duration: {video_duration:.1f} seconds")
+            
+        except Exception as e:
+            print(f"Error compiling video: {e}")
+
+    def _cleanup_temp_frames(self):
+        """Clean up temporary frame files"""
+        try:
+            if os.path.exists(self.temp_dir):
+                for file in os.listdir(self.temp_dir):
+                    file_path = os.path.join(self.temp_dir, file)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                os.rmdir(self.temp_dir)
+        except Exception as e:
+            print(f"Warning: Failed to cleanup temp files: {e}")
+
+    def set_current_step_info(self, step_number: int, step_text: str):
+        """Set current step information for video overlays"""
+        self.current_step_number = step_number
+        self.current_step_text = step_text
 
     def set_brush(self, brush_type: str, color: str = "default"):
         """Set the brush type and color in the interface using the brush buttons and color pickers"""
@@ -261,10 +489,14 @@ class DrawingCanvasBridge:
         except Exception as e:
             print(f"Warning: Stroke execution failed: {e}")
 
-    def execute_instruction(self, instruction: DrawingInstruction):
-        """Execute a complete drawing instruction"""
+    def execute_instruction(self, instruction: DrawingInstruction, step_number: int = 0):
+        """Execute a complete drawing instruction with optional video capture"""
         print(f"Executing instruction: {instruction.reasoning}")
         print(f"Using brush: {instruction.brush}, color: {instruction.color}")
+
+        # Set current step info for video overlays
+        if self.enable_video_capture:
+            self.set_current_step_info(step_number, instruction.reasoning)
 
         # Set the brush and color
         self.set_brush(instruction.brush, instruction.color)
@@ -320,7 +552,11 @@ class DrawingCanvasBridge:
             print(f"Error clearing canvas: {e}")
 
     def close(self):
-        """Close the web driver"""
+        """Close the web driver and stop video capture if active"""
+        # Stop video capture if it's running
+        if self.enable_video_capture and self.capturing:
+            self.stop_video_capture()
+            
         if self.driver:
             self.driver.quit()
             print("Canvas interface closed")
@@ -331,22 +567,24 @@ class AutomatedDrawingCanvas:
     for automated creative drawing sessions.
     """
 
-    def __init__(self, api_key: str, canvas_url: str = None):
+    def __init__(self, api_key: str, canvas_url: str = None, enable_video_capture: bool = False, capture_fps: int = 30):
         self.agent = FreeDrawingAgent(api_key=api_key)
-        self.bridge = DrawingCanvasBridge(canvas_url=canvas_url)
+        self.bridge = DrawingCanvasBridge(canvas_url=canvas_url, enable_video_capture=enable_video_capture, capture_fps=capture_fps)
+        self.enable_video_capture = enable_video_capture
 
     def start(self):
         """Start the drawing canvas interface"""
         self.bridge.start_canvas_interface()
 
     def draw_from_canvas(self, canvas_filename: str = "current_canvas.png",
-                        question: str = "What would you like to draw next?"):
+                        question: str = "What would you like to draw next?", step_number: int = 0):
         """
         Analyze the current canvas and execute a drawing instruction.
 
         Args:
             canvas_filename: Filename to save/load the current canvas
             question: Question to ask the agent about what to draw
+            step_number: Step number for video overlays
 
         Returns:
             The executed DrawingInstruction
@@ -358,18 +596,19 @@ class AutomatedDrawingCanvas:
         instruction = self.agent.create_drawing_instruction(canvas_filename, question)
 
         # Execute the instruction
-        self.bridge.execute_instruction(instruction)
+        self.bridge.execute_instruction(instruction, step_number)
 
         return instruction
 
     def draw_from_emotion(self, canvas_filename: str = "current_canvas.png",
-                         emotion: str = None):
+                         emotion: str = None, step_number: int = 0):
         """
         Create a mood-based drawing instruction and execute it.
 
         Args:
             canvas_filename: Filename to save the current canvas image
             emotion: Optional emotion to express (if None, LLM chooses autonomously)
+            step_number: Step number for video overlays
 
         Returns:
             DrawingInstruction object that was executed
@@ -383,16 +622,17 @@ class AutomatedDrawingCanvas:
         )
 
         # Execute the instruction
-        self.bridge.execute_instruction(instruction)
+        self.bridge.execute_instruction(instruction, step_number)
 
         return instruction
 
-    def draw_from_abstract(self, canvas_filename: str = "current_canvas.png"):
+    def draw_from_abstract(self, canvas_filename: str = "current_canvas.png", step_number: int = 0):
         """
         Create an abstract, non-representational drawing instruction and execute it.
 
         Args:
             canvas_filename: Filename to save the current canvas image
+            step_number: Step number for video overlays
 
         Returns:
             DrawingInstruction object that was executed
@@ -406,60 +646,79 @@ class AutomatedDrawingCanvas:
         )
 
         # Execute the instruction
-        self.bridge.execute_instruction(instruction)
+        self.bridge.execute_instruction(instruction, step_number)
 
         return instruction
 
-    def creative_session(self, num_iterations: int = 5,output_dir: str = 'output'):
+    def creative_session(self, num_iterations: int = 5, output_dir: str = 'output'):
         """
         Run a creative drawing session with multiple iterations.
 
         Args:
             num_iterations: Number of drawing iterations to perform
+            output_dir: Directory to save outputs
         """
         print(f"🎨 Starting creative drawing session with {num_iterations} iterations")
+        
+        if self.enable_video_capture:
+            print(f"🎥 Video capture enabled - recording drawing process")
 
         # Create output directory
         os.makedirs(f"{output_dir}", exist_ok=True)
+
+        # Start video capture if enabled
+        if self.enable_video_capture:
+            video_output = f"{output_dir}/creative_session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4"
+            self.bridge.start_video_capture(video_output)
 
         # Capture initial blank canvas
         self.bridge.capture_canvas(f"{output_dir}/canvas_step_0.png")
 
         instructions = []
 
-        for i in range(num_iterations):
-            print(f"\n--- Iteration {i+1}/{num_iterations} ---")
+        try:
+            for i in range(num_iterations):
+                print(f"\n--- Iteration {i+1}/{num_iterations} ---")
 
-            canvas_file = f"output/canvas_step_{i}.png"
+                canvas_file = f"{output_dir}/canvas_step_{i}.png"
 
-            # Questions to vary the creative process
-            questions = [
-                "What would you like to draw next?",
-                "How can you enhance this artwork?",
-                "What creative element would complement this scene?",
-                "What interesting detail could you add?",
-                "How would you continue this artistic expression?"
-            ]
+                # Questions to vary the creative process
+                questions = [
+                    "What would you like to draw next?",
+                    "How can you enhance this artwork?",
+                    "What creative element would complement this scene?",
+                    "What interesting detail could you add?",
+                    "How would you continue this artistic expression?"
+                ]
 
-            question = questions[i % len(questions)]
+                question = questions[i % len(questions)]
 
-            instruction = self.draw_from_canvas(canvas_file, question)
-            instructions.append(instruction)
+                instruction = self.draw_from_canvas(canvas_file, question, step_number=i+1)
+                instructions.append(instruction)
 
-            # Capture the result
-            self.bridge.capture_canvas(f"{output_dir}/canvas_step_{i+1}.png")
+                # Capture the result
+                self.bridge.capture_canvas(f"{output_dir}/canvas_step_{i+1}.png")
 
-            print(f"Agent's reasoning: {instruction.reasoning}")
+                print(f"Agent's reasoning: {instruction.reasoning}")
 
-        # Save final artwork
-        final_canvas = "output/final_artwork.png"
-        self.bridge.capture_canvas(final_canvas)
+            # Save final artwork
+            final_canvas = f"{output_dir}/final_artwork.png"
+            self.bridge.capture_canvas(final_canvas)
 
-        print(f"\n🎉 Creative session completed!")
-        print(f"Final artwork saved as: {final_canvas}")
-        print(f"\n📋 Session Summary:")
-        for i, instruction in enumerate(instructions):
-            print(f"  Step {i+1}: {instruction.reasoning}")
+            print(f"\n🎉 Creative session completed!")
+            print(f"Final artwork saved as: {final_canvas}")
+            
+            if self.enable_video_capture:
+                print(f"🎬 Video saved as: {video_output}")
+                
+            print(f"\n📋 Session Summary:")
+            for i, instruction in enumerate(instructions):
+                print(f"  Step {i+1}: {instruction.reasoning}")
+
+        finally:
+            # Stop video capture if it was started
+            if self.enable_video_capture:
+                self.bridge.stop_video_capture()
 
         return instructions
 
