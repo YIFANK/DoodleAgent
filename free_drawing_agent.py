@@ -747,10 +747,10 @@ Doodling is all about letting your hand move freely without worrying about creat
   - Circle: x and y coordinates trace circular path
     {{x: [200, 225, 250, 225, 200, 175, 150, 175, 200],
      y: [200, 175, 200, 225, 250, 225, 200, 175, 200]}}
-  - Smile: x and y coordinates trace a smile shape
+  - Upward Curve: x and y coordinates trace a curve shape
     {{x: [200, 250, 300, 350, 400],
      y: [200, 210, 215, 210, 200]}}
-  - Frown: x and y coordinates trace a frown shape
+  - Downward Curve: x and y coordinates trace a curve shape
     {{x: [200, 250, 300, 350, 400],
      y: [220, 210, 205, 210, 220]}}
 
@@ -798,11 +798,6 @@ HOW IT WORKS:
 - Consider color harmony and contrast with existing artwork
 - For **pen**, **spray**, and **fountain**: always use "default" (they draw in black)
 
-**CURVE PLANNING IS CRUCIAL:**
-- For smiles: Start and end at same y, make middle points HIGHER y values
-- For frowns: Start and end at same y, make middle points LOWER y values
-- For circles: Follow circular arc mathematics with gradual y changes
-- Use 5-8 coordinate points for smooth, natural curves
 
 Use slow speeds (4-5) when you want:
 - Smooth curves (ESSENTIAL for smiles, circles, arcs)
@@ -851,10 +846,10 @@ Always start by establishing the mood for this stroke, then plan each mark to re
   - Circle: x and y coordinates trace circular path
     {{x: [200, 225, 250, 225, 200, 175, 150, 175, 200],
      y: [200, 175, 200, 225, 250, 225, 200, 175, 200]}}
-  - Smile: x and y coordinates trace a smile shape
+  - Upward Curve: x and y coordinates trace a curve shape
     {{x: [200, 250, 300, 350, 400],
      y: [200, 210, 215, 210, 200]}}
-  - Frown: x and y coordinates trace a frown shape
+  - Downward Curve: x and y coordinates trace a curve shape
     {{x: [200, 250, 300, 350, 400],
      y: [220, 210, 205, 210, 220]}}
 
@@ -973,6 +968,22 @@ You are a visionary abstract artist who creates pure, non-representational art! 
 - **Increase x values to move RIGHT, decrease x values to move LEFT**
 - Canvas size: 850px wide × 500px tall
 - Think of coordinates like reading: left-to-right (x), top-to-bottom (y)
+- Examples:
+  - Vertical line: x stays same, y changes
+    {{x: [100, 100], y: [50, 200]}} # Line going down
+    {{x: [400, 400], y: [300, 100]}} # Line going up
+  - Horizontal line: y stays same, x changes
+    {{x: [50, 200], y: [100, 100]}} # Line going right
+    {{x: [300, 100], y: [200, 200]}} # Line going left
+  - Circle: x and y coordinates trace circular path
+    {{x: [200, 225, 250, 225, 200, 175, 150, 175, 200],
+     y: [200, 175, 200, 225, 250, 225, 200, 175, 200]}}
+  - Upward Curve: x and y coordinates trace a curve shape
+    {{x: [200, 250, 300, 350, 400],
+     y: [200, 210, 215, 210, 200]}}
+  - Downward Curve: x and y coordinates trace a curve shape
+    {{x: [200, 250, 300, 350, 400],
+     y: [220, 210, 205, 210, 220]}}
 
 BRUSH TYPES AND CHARACTERISTICS:
 Precision Tools:
@@ -1581,7 +1592,6 @@ Remember: Create pure abstract art that transcends representation! Let your imag
             palette_desc += f"  - Default: {shades['DEFAULT']} (recommended)\n"
             palette_desc += f"  - Light: {shades['600']}, {shades['700']}, {shades['800']}, {shades['900']}\n"
             palette_desc += f"  - Dark: {shades['100']}, {shades['200']}, {shades['300']}, {shades['400']}\n\n"
-
         return palette_desc
 
     def validate_color_from_palette(self, color: str) -> str:

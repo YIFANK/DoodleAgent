@@ -25,8 +25,8 @@ def main():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     canvas_url = f"file://{current_dir}/drawing_canvas.html"
 
-    # Initialize the automated drawing canvas
-    canvas = AutomatedDrawingCanvas(api_key=api_key, canvas_url=canvas_url)
+    # Initialize the automated drawing canvas with video capture enabled
+    canvas = AutomatedDrawingCanvas(api_key=api_key, canvas_url=canvas_url, enable_video_capture=True, capture_fps=30)
 
     try:
         print("🎨 Starting Free Drawing Canvas Demo")
@@ -86,93 +86,126 @@ def main():
             # Interactive demo
             print("\n🎯 Running Interactive Demo...")
             print("You can ask the AI what to draw next. Type 'quit' to stop.")
+            print("🎥 Video recording enabled - capturing the entire interactive session!")
+
+            # Start video capture for interactive session
+            video_output = f"{run_output_dir}/interactive_session_{timestamp}.mp4"
+            canvas.bridge.start_video_capture(video_output)
 
             step = 0
-            while True:
-                step += 1
-                print(f"\n--- Interactive Step {step} ---")
+            try:
+                while True:
+                    step += 1
+                    print(f"\n--- Interactive Step {step} ---")
 
-                # Get user question
-                question = input("What would you like to ask the AI to draw? (or 'quit'): ").strip()
-                if question.lower() in ['quit', 'exit', 'stop']:
-                    break
+                    # Get user question
+                    question = input("What would you like to ask the AI to draw? (or 'quit'): ").strip()
+                    if question.lower() in ['quit', 'exit', 'stop']:
+                        break
 
-                if not question:
-                    question = "What would you like to draw next?"
+                    if not question:
+                        question = "What would you like to draw next?"
 
-                # Execute drawing step
-                canvas_file = f"{run_output_dir}/interactive_step_{step}.png"
-                instruction = canvas.draw_from_canvas(canvas_file, question)
+                    # Execute drawing step
+                    canvas_file = f"{run_output_dir}/interactive_step_{step}.png"
+                    instruction = canvas.draw_from_canvas(canvas_file, question, step_number=step)
 
-                print(f"🎨 AI's response: {instruction.reasoning}")
-                print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
+                    print(f"🎨 AI's response: {instruction.reasoning}")
+                    print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
 
-                # Show strokes summary
-                print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
-                for i, stroke in enumerate(instruction.strokes):
-                    print(f"   {i+1}. {stroke['description']}")
+                    # Show strokes summary
+                    print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
+                    for i, stroke in enumerate(instruction.strokes):
+                        print(f"   {i+1}. {stroke['description']}")
 
-            # Save final interactive artwork
-            canvas.bridge.capture_canvas(f"{run_output_dir}/interactive_final.png")
-            print(f"\n🎉 Interactive session completed!")
-            print(f"Final artwork saved as: {run_output_dir}/interactive_final.png")
+                # Save final interactive artwork
+                canvas.bridge.capture_canvas(f"{run_output_dir}/interactive_final.png")
+                print(f"\n🎉 Interactive session completed!")
+                print(f"Final artwork saved as: {run_output_dir}/interactive_final.png")
+                print(f"🎬 Video saved as: {video_output}")
+                
+            finally:
+                # Stop video capture
+                canvas.bridge.stop_video_capture()
 
         elif choice == "5":
             # Mood-based demo
             print("\n🎯 Running Mood-Based Demo...")
             print("The AI will autonomously determine artistic moods and create drawings that express them!")
             print("Each step starts with the AI choosing a mood, then creating art that embodies that mood.")
+            print("🎥 Video recording enabled - capturing the entire mood-based session!")
+
+            # Start video capture for mood-based session
+            video_output = f"{run_output_dir}/mood_session_{timestamp}.mp4"
+            canvas.bridge.start_video_capture(video_output)
 
             # Run for 30 automatic iterations
             num_iterations = 30
-            for step in range(1, num_iterations + 1):
-                print(f"\n--- Mood Step {step} ---")
-                print(f"🎨 AI is determining the mood for this step...")
+            try:
+                for step in range(1, num_iterations + 1):
+                    print(f"\n--- Mood Step {step} ---")
+                    print(f"🎨 AI is determining the mood for this step...")
 
-                # Execute mood-based drawing step (LLM determines mood autonomously)
-                canvas_file = f"{run_output_dir}/mood_step_{step}.png"
-                instruction = canvas.draw_from_emotion(canvas_file)  # No mood parameter - LLM chooses
+                    # Execute mood-based drawing step (LLM determines mood autonomously)
+                    canvas_file = f"{run_output_dir}/mood_step_{step}.png"
+                    instruction = canvas.draw_from_emotion(canvas_file, step_number=step)  # No mood parameter - LLM chooses
 
-                print(f"🎨 AI's mood: {instruction.reasoning}")
-                print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
+                    print(f"🎨 AI's mood: {instruction.reasoning}")
+                    print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
 
-                # Show strokes summary
-                print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
-                for i, stroke in enumerate(instruction.strokes):
-                    print(f"   {i+1}. {stroke['description']}")
+                    # Show strokes summary
+                    print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
+                    for i, stroke in enumerate(instruction.strokes):
+                        print(f"   {i+1}. {stroke['description']}")
 
-            # Save final mood-based artwork
-            canvas.bridge.capture_canvas(f"{run_output_dir}/mood_final.png")
-            print(f"\n🎉 Mood-based session completed!")
-            print(f"Final artwork saved as: {run_output_dir}/mood_final.png")
+                # Save final mood-based artwork
+                canvas.bridge.capture_canvas(f"{run_output_dir}/mood_final.png")
+                print(f"\n🎉 Mood-based session completed!")
+                print(f"Final artwork saved as: {run_output_dir}/mood_final.png")
+                print(f"🎬 Video saved as: {video_output}")
+                
+            finally:
+                # Stop video capture
+                canvas.bridge.stop_video_capture()
 
         elif choice == "6":
             # Abstract demo
             print("\n🎯 Running Abstract Demo...")
             print("The AI will create pure, non-representational art!")
             print("No concrete objects - just abstract shapes, lines, and pure creativity.")
+            print("🎥 Video recording enabled - capturing the entire abstract session!")
+
+            # Start video capture for abstract session
+            video_output = f"{run_output_dir}/abstract_session_{timestamp}.mp4"
+            canvas.bridge.start_video_capture(video_output)
 
             num_iterations = 30
-            for step in range(1, num_iterations + 1):
-                print(f"\n--- Abstract Step {step} ---")
-                print(f"🎨 AI is creating abstract art...")
+            try:
+                for step in range(1, num_iterations + 1):
+                    print(f"\n--- Abstract Step {step} ---")
+                    print(f"🎨 AI is creating abstract art...")
 
-                # Execute abstract drawing step
-                canvas_file = f"{run_output_dir}/abstract_step_{step}.png"
-                instruction = canvas.draw_from_abstract(canvas_file)
+                    # Execute abstract drawing step
+                    canvas_file = f"{run_output_dir}/abstract_step_{step}.png"
+                    instruction = canvas.draw_from_abstract(canvas_file, step_number=step)
 
-                print(f"🎨 AI's abstract creation: {instruction.reasoning}")
-                print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
+                    print(f"🎨 AI's abstract creation: {instruction.reasoning}")
+                    print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
 
-                # Show strokes summary
-                print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
-                for i, stroke in enumerate(instruction.strokes):
-                    print(f"   {i+1}. {stroke['description']}")
+                    # Show strokes summary
+                    print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
+                    for i, stroke in enumerate(instruction.strokes):
+                        print(f"   {i+1}. {stroke['description']}")
 
-            # Save final abstract artwork
-            canvas.bridge.capture_canvas(f"{run_output_dir}/abstract_final.png")
-            print(f"\n🎉 Abstract session completed!")
-            print(f"Final artwork saved as: {run_output_dir}/abstract_final.png")
+                # Save final abstract artwork
+                canvas.bridge.capture_canvas(f"{run_output_dir}/abstract_final.png")
+                print(f"\n🎉 Abstract session completed!")
+                print(f"Final artwork saved as: {run_output_dir}/abstract_final.png")
+                print(f"🎬 Video saved as: {video_output}")
+                
+            finally:
+                # Stop video capture
+                canvas.bridge.stop_video_capture()
 
         else:
             print("Invalid choice, running quick demo...")
