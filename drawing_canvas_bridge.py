@@ -242,8 +242,12 @@ class DrawingCanvasBridge:
             
             print(f"🎞️ Compiling {len(frame_files)} frames into video...")
             
-            # Create video writer
-            writer = imageio.get_writer(self.video_output_path, fps=self.capture_fps, 
+            # Use lower FPS for video playback to make it longer
+            # We capture at 30 fps but play back at 10 fps = 3x longer video
+            playback_fps = 10
+            
+            # Create video writer with lower playback FPS
+            writer = imageio.get_writer(self.video_output_path, fps=playback_fps, 
                                      codec='libx264', quality=8)
             
             try:
@@ -259,9 +263,11 @@ class DrawingCanvasBridge:
             finally:
                 writer.close()
             
-            # Calculate video duration
-            video_duration = len(frame_files) / self.capture_fps
-            print(f"📹 Video duration: {video_duration:.1f} seconds")
+            # Calculate video duration with playback FPS
+            video_duration = len(frame_files) / playback_fps
+            capture_duration = len(frame_files) / self.capture_fps
+            print(f"📹 Video duration: {video_duration:.1f} seconds (captured in {capture_duration:.1f}s real-time)")
+            print(f"🎬 Playback: {playback_fps} fps (captured at {self.capture_fps} fps)")
             
         except Exception as e:
             print(f"Error compiling video: {e}")

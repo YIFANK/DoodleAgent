@@ -836,7 +836,18 @@ Always start by establishing the mood for this stroke, then plan each mark to re
 - **Increase x values to move RIGHT, decrease x values to move LEFT**
 - Canvas size: 850px wide × 500px tall
 - Think of coordinates like reading: left-to-right (x), top-to-bottom (y)
-- Examples:
+
+### CRITICAL CURVE DIRECTION RULES:
+**SMILES vs FROWNS** (This is where many mistakes happen!):
+- **SMILE (happy curve)**: Middle y-values are SMALLER than end y-values
+  {{x: [200, 250, 300, 350, 400], y: [250, 240, 230, 240, 250]}} # ∪ shape
+- **FROWN (sad curve)**: Middle y-values are LARGER than end y-values  
+  {{x: [200, 250, 300, 350, 400], y: [230, 240, 250, 240, 230]}} # ∩ shape
+
+### GEOMETRIC POSITIONING RULES:
+When positioning elements that are spatially related, consider where they are in the canvas and how they relate to each other.
+
+### BASIC SHAPES EXAMPLES:
   - Vertical line: x stays same, y changes
     {{x: [100, 100], y: [50, 200]}} # Line going down
     {{x: [400, 400], y: [300, 100]}} # Line going up
@@ -846,12 +857,20 @@ Always start by establishing the mood for this stroke, then plan each mark to re
   - Circle: x and y coordinates trace circular path
     {{x: [200, 225, 250, 225, 200, 175, 150, 175, 200],
      y: [200, 175, 200, 225, 250, 225, 200, 175, 200]}}
-  - Upward Curve: x and y coordinates trace a curve shape
-    {{x: [200, 250, 300, 350, 400],
-     y: [200, 210, 215, 210, 200]}}
-  - Downward Curve: x and y coordinates trace a curve shape
-    {{x: [200, 250, 300, 350, 400],
-     y: [220, 210, 205, 210, 220]}}
+
+### CREATIVE GEOMETRIC EXAMPLES:
+  - **Organic Arch**: varied spacing, natural flow
+    {{x: [150, 220, 340, 480, 650], y: [200, 150, 120, 160, 210]}} # irregular x-spacing
+  - **Asymmetric Dip**: uneven curve with character
+    {{x: [180, 240, 280, 380, 520], y: [160, 200, 240, 220, 180]}} # creative progression
+  - **Diagonal Flow**: movement across canvas
+    {{x: [100, 180, 260, 340, 420], y: [400, 350, 300, 250, 200]}} # diagonal direction
+  - **Spiral Movement**: curved directional change  
+    {{x: [300, 350, 380, 350, 300, 250, 220, 250], y: [200, 180, 220, 260, 280, 260, 220, 180]}}
+  - **Vertical Emphasis**: more y-movement than x
+    {{x: [350, 320, 380, 340, 370], y: [100, 200, 300, 400, 450]}} # vertical flow
+  - **Scattered Elements**: non-linear positioning
+    {{x: [150, 280, 500, 380, 650], y: [180, 320, 200, 280, 360]}} # creative scatter
 
 Consider how brush choice reinforces mood:
 - **pen**: Precise, controlled emotions (focus, determination, clarity)
@@ -968,7 +987,21 @@ You are a visionary abstract artist who creates pure, non-representational art! 
 - **Increase x values to move RIGHT, decrease x values to move LEFT**
 - Canvas size: 850px wide × 500px tall
 - Think of coordinates like reading: left-to-right (x), top-to-bottom (y)
-- Examples:
+
+### CRITICAL CURVE DIRECTION RULES:
+**SMILES vs FROWNS** (This is where many mistakes happen!):
+- **SMILE (happy curve)**: Middle y-values are SMALLER than end y-values
+  {{x: [200, 250, 300, 350, 400], y: [250, 240, 230, 240, 250]}} # ∪ shape
+- **FROWN (sad curve)**: Middle y-values are LARGER than end y-values  
+  {{x: [200, 250, 300, 350, 400], y: [230, 240, 250, 240, 230]}} # ∩ shape
+
+### ABSTRACT FORM POSITIONING:
+**Create abstract forms in different canvas regions:**
+- **Top region**: y=50-200 (upper abstractions)
+- **Middle region**: y=200-350 (central abstractions)
+- **Bottom region**: y=350-500 (lower abstractions)
+
+### BASIC SHAPES EXAMPLES:
   - Vertical line: x stays same, y changes
     {{x: [100, 100], y: [50, 200]}} # Line going down
     {{x: [400, 400], y: [300, 100]}} # Line going up
@@ -978,12 +1011,22 @@ You are a visionary abstract artist who creates pure, non-representational art! 
   - Circle: x and y coordinates trace circular path
     {{x: [200, 225, 250, 225, 200, 175, 150, 175, 200],
      y: [200, 175, 200, 225, 250, 225, 200, 175, 200]}}
-  - Upward Curve: x and y coordinates trace a curve shape
-    {{x: [200, 250, 300, 350, 400],
-     y: [200, 210, 215, 210, 200]}}
-  - Downward Curve: x and y coordinates trace a curve shape
-    {{x: [200, 250, 300, 350, 400],
-     y: [220, 210, 205, 210, 220]}}
+
+### CREATIVE ABSTRACT EXAMPLES:
+  - **Organic Flow**: irregular, natural spacing
+    {{x: [120, 250, 380, 520, 680], y: [300, 180, 240, 120, 280]}} # varied intervals
+  - **Dynamic Sweep**: bold directional movement  
+    {{x: [80, 200, 420, 600, 750], y: [450, 300, 150, 200, 100]}} # sweeping motion
+  - **Chaotic Energy**: scattered, energetic placement
+    {{x: [180, 350, 220, 480, 320], y: [160, 280, 380, 200, 340]}} # energetic scatter
+  - **Rhythmic Pattern**: varied but rhythmic spacing
+    {{x: [100, 180, 300, 420, 580, 720], y: [250, 180, 220, 160, 200, 240]}} # rhythmic flow
+  - **Vertical Cascade**: emphasis on vertical movement
+    {{x: [400, 380, 420, 360, 440], y: [80, 180, 280, 380, 460]}} # vertical emphasis
+  - **Expanding Form**: growth from center outward
+    {{x: [400, 350, 300, 450, 500, 320, 480], y: [250, 220, 200, 230, 260, 280, 290]}} # expanding
+  - **Intersecting Paths**: crossing directional flows
+    {{x: [150, 300, 450, 350, 200, 400], y: [200, 250, 300, 180, 160, 220]}} # intersecting
 
 BRUSH TYPES AND CHARACTERISTICS:
 Precision Tools:
