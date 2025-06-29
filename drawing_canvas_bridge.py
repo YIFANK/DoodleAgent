@@ -369,15 +369,21 @@ class DrawingCanvasBridge:
         if "x" in stroke and "y" in stroke:
             x_coords = stroke["x"]
             y_coords = stroke["y"]
+            timing = stroke.get("timing", [])
 
             if len(x_coords) != len(y_coords) or len(x_coords) < 2:
                 print(f"Warning: Invalid stroke, need at least 2 points")
                 return
 
-            # Execute as a continuous stroke using JavaScript
-            self._execute_continuous_stroke(x_coords, y_coords)
+            # Ensure timing array has same length as coordinates
+            if len(timing) != len(x_coords):
+                # Generate default timing if missing
+                timing = [i * 100 for i in range(len(x_coords))]
 
-    def _execute_continuous_stroke(self, x_coords: list, y_coords: list):
+            # Execute as a continuous stroke using JavaScript
+            self._execute_continuous_stroke(x_coords, y_coords, timing)
+
+    def _execute_continuous_stroke(self, x_coords: list, y_coords: list, timing: list):
         """Execute a continuous stroke using JavaScript mouse events with smooth interpolation"""
         try:
             # Create JavaScript code to simulate drawing
@@ -392,6 +398,7 @@ class DrawingCanvasBridge:
             const rect = canvasElement.getBoundingClientRect();
             const x_coords = {x_coords};
             const y_coords = {y_coords};
+            const timing = {timing};
 
             console.log('Starting smooth stroke with coordinates:', x_coords, y_coords);
             console.log('Initial pmouseX, pmouseY:', window.pmouseX, window.pmouseY);
@@ -441,12 +448,11 @@ class DrawingCanvasBridge:
             // Small delay after mousedown, then start moving
             setTimeout(() => {{
                 console.log('Starting smooth movement - pmouseX:', window.pmouseX, 'pmouseY:', window.pmouseY);
+                console.log('Using timing:', timing);
 
-                // Create smooth interpolated movement between points
+                // Create smooth interpolated movement between points using actual timestamps
                 let currentPointIndex = 0;
-                const segmentDuration = 50; // 200ms between main points
-                const interpolationSteps = 2; // Number of intermediate points per segment
-                const stepDuration = segmentDuration / interpolationSteps; // ~20ms per step
+                const interpolationSteps = 3; // Number of intermediate points per segment
 
                 function drawNextSegment() {{
                     if (currentPointIndex >= x_coords.length - 1) {{
@@ -454,7 +460,7 @@ class DrawingCanvasBridge:
                         setTimeout(() => {{
                             simulateMouseEvent('mouseup', x_coords[x_coords.length - 1], y_coords[y_coords.length - 1]);
                             console.log('Smooth stroke completed');
-                        }}, stepDuration);
+                        }}, 20);
                         return;
                     }}
 
@@ -462,6 +468,14 @@ class DrawingCanvasBridge:
                     const startY = y_coords[currentPointIndex];
                     const endX = x_coords[currentPointIndex + 1];
                     const endY = y_coords[currentPointIndex + 1];
+                    
+                    // Calculate actual duration for this segment from timestamps
+                    const startTime = timing[currentPointIndex];
+                    const endTime = timing[currentPointIndex + 1];
+                    const segmentDuration = endTime - startTime; // Duration in milliseconds
+                    const stepDuration = segmentDuration / interpolationSteps;
+                    
+                    console.log(`Segment ${{currentPointIndex}}: duration=${{segmentDuration}}ms, stepDuration=${{stepDuration}}ms`);
 
                     // Create smooth interpolation between current and next point
                     for (let step = 1; step <= interpolationSteps; step++) {{
@@ -475,9 +489,9 @@ class DrawingCanvasBridge:
                             // If this is the last step of this segment, move to next segment
                             if (step === interpolationSteps) {{
                                 currentPointIndex++;
-                                setTimeout(drawNextSegment, stepDuration);
+                                setTimeout(drawNextSegment, Math.max(20, stepDuration)); // Minimum 20ms delay
                             }}
-                        }}, step * stepDuration);
+                        }}, step * Math.max(10, stepDuration)); // Minimum 10ms per step
                     }}
                 }}
 
@@ -488,8 +502,15 @@ class DrawingCanvasBridge:
 
             self.driver.execute_script(js_code)
 
-            # Wait for the stroke to complete (200ms per segment + some buffer)
-            total_duration = len(x_coords) * 0.2 + 0.5
+            # Wait for the stroke to complete based on actual timing
+            if timing and len(timing) >= 2:
+                # Calculate total duration from first to last timestamp + buffer
+                total_duration = (timing[-1] - timing[0]) / 1000.0 + 0.5  # Convert ms to seconds + buffer
+            else:
+                # Fallback duration
+                total_duration = len(x_coords) * 0.1 + 0.5
+            
+            print(f"Waiting {total_duration:.2f}s for stroke completion")
             time.sleep(total_duration)
 
         except Exception as e:
@@ -497,25 +518,24 @@ class DrawingCanvasBridge:
 
     def execute_instruction(self, instruction: DrawingInstruction, step_number: int = 0):
         """Execute a complete drawing instruction with optional video capture"""
-        print(f"Executing instruction: {instruction.reasoning}")
+        print(f"Executing instruction: {instruction.thinking}")
         print(f"Using brush: {instruction.brush}, color: {instruction.color}")
 
         # Set current step info for video overlays
         if self.enable_video_capture:
-            self.set_current_step_info(step_number, instruction.reasoning)
+            self.set_current_step_info(step_number, instruction.thinking)
 
         # Set the brush and color
         self.set_brush(instruction.brush, instruction.color)
 
         # Execute all strokes
         for i, stroke in enumerate(instruction.strokes):
-            print(f"  Drawing stroke {i+1}/{len(instruction.strokes)}: {stroke['description']}")
+            print(f"  Drawing stroke {i+1}/{len(instruction.strokes)}")
 
             # Show timing information if available
-            if 'timing' in stroke and 'original_x' in stroke:
-                original_points = len(stroke['original_x'])
-                interpolated_points = len(stroke['x'])
-                print(f"    Original points: {original_points}, Interpolated points: {interpolated_points}")
+            if 'timing' in stroke:
+                original_points = len(stroke['x'])
+                print(f"    Original points: {original_points}")
                 print(f"    Timing: {stroke['timing']}")
 
             self.execute_stroke(stroke)
@@ -600,7 +620,6 @@ class AutomatedDrawingCanvas:
 
         # Get drawing instruction from agent
         instruction = self.agent.create_drawing_instruction(canvas_filename, question)
-
         # Execute the instruction
         self.bridge.execute_instruction(instruction, step_number)
 
@@ -689,23 +708,23 @@ class AutomatedDrawingCanvas:
                 canvas_file = f"{output_dir}/canvas_step_{i}.png"
 
                 # Questions to vary the creative process
-                questions = [
-                    "What would you like to draw next?",
-                    "How can you enhance this artwork?",
-                    "What creative element would complement this scene?",
-                    "What interesting detail could you add?",
-                    "How would you continue this artistic expression?"
-                ]
+                # questions = [
+                #     "What would you like to draw next?",
+                #     "How can you enhance this artwork?",
+                #     "What creative element would complement this scene?",
+                #     "What interesting detail could you add?",
+                #     "How would you continue this artistic expression?"
+                # ]
 
-                question = questions[i % len(questions)]
-
+                # question = questions[i % len(questions)]
+                question = "What would you like to draw next?"
                 instruction = self.draw_from_canvas(canvas_file, question, step_number=i+1)
                 instructions.append(instruction)
 
                 # Capture the result
                 self.bridge.capture_canvas(f"{output_dir}/canvas_step_{i+1}.png")
 
-                print(f"Agent's reasoning: {instruction.reasoning}")
+                print(f"Agent's thinking: {instruction.thinking}")
 
             # Save final artwork
             final_canvas = f"{output_dir}/final_artwork.png"
@@ -719,7 +738,7 @@ class AutomatedDrawingCanvas:
                 
             print(f"\n📋 Session Summary:")
             for i, instruction in enumerate(instructions):
-                print(f"  Step {i+1}: {instruction.reasoning}")
+                print(f"  Step {i+1}: {instruction.thinking}")
 
         finally:
             # Stop video capture if it was started

@@ -96,11 +96,6 @@
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
         }
 
-        .brush-btn.pen {
-            background: linear-gradient(135deg, #2c3e50, #34495e);
-            color: white;
-        }
-
         .brush-btn.marker {
             background: linear-gradient(135deg, #f39c12, #e67e22);
             color: white;
@@ -297,7 +292,6 @@
         </div>
 
         <div class="controls">
-            <button class="brush-btn pen active" onclick="setBrush('pen')">✏️ Pen</button>
             <button class="brush-btn marker" onclick="setBrush('marker')">🖍️ Marker</button>
             <button class="brush-btn crayon" onclick="setBrush('crayon')">🎨 Crayon</button>
             <button class="brush-btn wiggle" onclick="setBrush('wiggle')">〰️ Wiggle</button>
@@ -334,7 +328,7 @@
     </div>
 
     <script>
-        let currentBrush = 'pen';
+        let currentBrush = 'marker';
         let hasDrawn = false;
 
         // Bot variables
@@ -355,7 +349,7 @@
             wiggle: '#ff7675'
         };
         
-        const brushTypes = ['pen', 'marker', 'crayon', 'wiggle', 'spray', 'fountain'];
+        const brushTypes = ['marker', 'crayon', 'wiggle', 'spray', 'fountain'];
 
         function setBrush(brushType) {
             currentBrush = brushType;
@@ -525,9 +519,6 @@
                 
                 // Call the appropriate brush function
                 switch(currentBrush) {
-                    case 'pen':
-                        pen();
-                        break;
                     case 'marker':
                         marker();
                         break;
@@ -571,9 +562,6 @@
 
                 // Call the appropriate brush function
                 switch(currentBrush) {
-                    case 'pen':
-                        pen();
-                        break;
                     case 'marker':
                         marker();
                         break;
@@ -662,9 +650,6 @@
 
                 // Call the appropriate brush function
                 switch(currentBrush) {
-                    case 'pen':
-                        pen();
-                        break;
                     case 'marker':
                         marker();
                         break;
@@ -685,12 +670,6 @@
         }
 
         // Brush Functions (based on SuperHi tutorial)
-
-        function pen() {
-            stroke(0, 0, 0, 255);
-            strokeWeight(2);
-            line(mouseX, mouseY, pmouseX, pmouseY);
-        }
 
         function marker() {
             const color = hexToRgb(brushColors.marker);
