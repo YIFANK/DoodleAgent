@@ -373,7 +373,7 @@ class DrawingCanvasBridge:
             # Execute as a continuous stroke using JavaScript
             self._execute_continuous_stroke(x_coords, y_coords)
 
-    def _execute_continuous_stroke(self, x_coords: list, y_coords: list):
+    def _execute_continuous_stroke(self, x_coords: list, y_coords: list, step_length: int = 10, step_duration: int = 100):
         """Execute a continuous stroke using JavaScript mouse events with smooth interpolation"""
         try:
             # Create JavaScript code to simulate drawing
@@ -440,7 +440,7 @@ class DrawingCanvasBridge:
 
                 // Create smooth interpolated movement between points using actual timestamps
                 let currentPointIndex = 0;
-                const step_length = 10; // length of each step in pixels
+                const step_length = {step_length}; // length of each step in pixels
                 //calculate the number of steps based on the step_length
                 function drawNextSegment() {{
                     if (currentPointIndex >= x_coords.length - 1) {{
@@ -461,7 +461,7 @@ class DrawingCanvasBridge:
                     const length = Math.sqrt(Math.pow(startX - endX, 2) + Math.pow(startY - endY, 2));
                     const interpolationSteps = Math.ceil(length / step_length);
                     //fix step duration to be the same for all segments
-                    const stepDuration = 100;
+                    const stepDuration = {step_duration};
                     
                     console.log(`Segment ${{currentPointIndex}}: duration=${{stepDuration}}ms, stepDuration=${{stepDuration}}ms`);
 
