@@ -71,3 +71,6 @@ htmlcov/
 *.svg
 *.ico
 illustrations/*.json
+
+*.mp4
+*.png

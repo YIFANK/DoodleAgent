@@ -369,21 +369,11 @@ class DrawingCanvasBridge:
         if "x" in stroke and "y" in stroke:
             x_coords = stroke["x"]
             y_coords = stroke["y"]
-            timing = stroke.get("timing", [])
-
-            if len(x_coords) != len(y_coords) or len(x_coords) < 2:
-                print(f"Warning: Invalid stroke, need at least 2 points")
-                return
-
-            # Ensure timing array has same length as coordinates
-            if len(timing) != len(x_coords):
-                # Generate default timing if missing
-                timing = [i * 100 for i in range(len(x_coords))]
 
             # Execute as a continuous stroke using JavaScript
-            self._execute_continuous_stroke(x_coords, y_coords, timing)
+            self._execute_continuous_stroke(x_coords, y_coords)
 
-    def _execute_continuous_stroke(self, x_coords: list, y_coords: list, timing: list):
+    def _execute_continuous_stroke(self, x_coords: list, y_coords: list):
         """Execute a continuous stroke using JavaScript mouse events with smooth interpolation"""
         try:
             # Create JavaScript code to simulate drawing
@@ -398,7 +388,6 @@ class DrawingCanvasBridge:
             const rect = canvasElement.getBoundingClientRect();
             const x_coords = {x_coords};
             const y_coords = {y_coords};
-            const timing = {timing};
 
             console.log('Starting smooth stroke with coordinates:', x_coords, y_coords);
             console.log('Initial pmouseX, pmouseY:', window.pmouseX, window.pmouseY);
@@ -448,12 +437,11 @@ class DrawingCanvasBridge:
             // Small delay after mousedown, then start moving
             setTimeout(() => {{
                 console.log('Starting smooth movement - pmouseX:', window.pmouseX, 'pmouseY:', window.pmouseY);
-                console.log('Using timing:', timing);
 
                 // Create smooth interpolated movement between points using actual timestamps
                 let currentPointIndex = 0;
-                const interpolationSteps = 3; // Number of intermediate points per segment
-
+                const step_length = 10; // length of each step in pixels
+                //calculate the number of steps based on the step_length
                 function drawNextSegment() {{
                     if (currentPointIndex >= x_coords.length - 1) {{
                         // End the stroke
@@ -470,12 +458,12 @@ class DrawingCanvasBridge:
                     const endY = y_coords[currentPointIndex + 1];
                     
                     // Calculate actual duration for this segment from timestamps
-                    const startTime = timing[currentPointIndex];
-                    const endTime = timing[currentPointIndex + 1];
-                    const segmentDuration = endTime - startTime; // Duration in milliseconds
-                    const stepDuration = segmentDuration / interpolationSteps;
+                    const length = Math.sqrt(Math.pow(startX - endX, 2) + Math.pow(startY - endY, 2));
+                    const interpolationSteps = Math.ceil(length / step_length);
+                    //fix step duration to be the same for all segments
+                    const stepDuration = 100;
                     
-                    console.log(`Segment ${{currentPointIndex}}: duration=${{segmentDuration}}ms, stepDuration=${{stepDuration}}ms`);
+                    console.log(`Segment ${{currentPointIndex}}: duration=${{stepDuration}}ms, stepDuration=${{stepDuration}}ms`);
 
                     // Create smooth interpolation between current and next point
                     for (let step = 1; step <= interpolationSteps; step++) {{
@@ -489,9 +477,9 @@ class DrawingCanvasBridge:
                             // If this is the last step of this segment, move to next segment
                             if (step === interpolationSteps) {{
                                 currentPointIndex++;
-                                setTimeout(drawNextSegment, Math.max(20, stepDuration)); // Minimum 20ms delay
+                                setTimeout(drawNextSegment, stepDuration); // Minimum 20ms delay
                             }}
-                        }}, step * Math.max(10, stepDuration)); // Minimum 10ms per step
+                        }}, step * stepDuration); // Minimum 10ms per step
                     }}
                 }}
 
@@ -500,18 +488,7 @@ class DrawingCanvasBridge:
             }}, 100);  // Reduced initial delay
             """
 
-            self.driver.execute_script(js_code)
-
-            # Wait for the stroke to complete based on actual timing
-            if timing and len(timing) >= 2:
-                # Calculate total duration from first to last timestamp + buffer
-                total_duration = (timing[-1] - timing[0]) / 1000.0 + 0.5  # Convert ms to seconds + buffer
-            else:
-                # Fallback duration
-                total_duration = len(x_coords) * 0.1 + 0.5
-            
-            print(f"Waiting {total_duration:.2f}s for stroke completion")
-            time.sleep(total_duration)
+            self.driver.execute_script(js_code) #this will execute the stroke
 
         except Exception as e:
             print(f"Warning: Stroke execution failed: {e}")
@@ -531,13 +508,6 @@ class DrawingCanvasBridge:
         # Execute all strokes
         for i, stroke in enumerate(instruction.strokes):
             print(f"  Drawing stroke {i+1}/{len(instruction.strokes)}")
-
-            # Show timing information if available
-            if 'timing' in stroke:
-                original_points = len(stroke['x'])
-                print(f"    Original points: {original_points}")
-                print(f"    Timing: {stroke['timing']}")
-
             self.execute_stroke(stroke)
 
     def capture_canvas(self, filename: str = "current_canvas.png"):
