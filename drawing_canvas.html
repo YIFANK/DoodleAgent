@@ -337,18 +337,18 @@
         let botCurrentStroke = [];
         let botStrokeIndex = 0;
         let isDrawingStroke = false;
-        
+
         // Random bot variables
         let randomBotActive = false;
         let randomBotInterval;
-        
+
         // Color variables for each brush
         let brushColors = {
-            marker: '#ff6b6b', 
+            marker: '#ff6b6b',
             crayon: '#87ceeb',
             wiggle: '#ff7675'
         };
-        
+
         const brushTypes = ['marker', 'crayon', 'wiggle', 'spray', 'fountain'];
 
         function setBrush(brushType) {
@@ -374,15 +374,15 @@
             const markerPicker = document.getElementById('marker-color');
             const crayonPicker = document.getElementById('crayon-color');
             const wigglePicker = document.getElementById('wiggle-color');
-            
+
             markerPicker.addEventListener('change', function(e) {
                 brushColors.marker = e.target.value;
             });
-            
+
             crayonPicker.addEventListener('change', function(e) {
                 brushColors.crayon = e.target.value;
             });
-            
+
             wigglePicker.addEventListener('change', function(e) {
                 brushColors.wiggle = e.target.value;
             });
@@ -408,7 +408,7 @@
             randomBotActive = !randomBotActive;
             const randomBotButton = document.querySelectorAll('.bot-btn')[1]; // Second bot button
             const randomBotStatus = document.getElementById('random-bot-status');
-            
+
             if (randomBotActive) {
                 randomBotButton.classList.add('active');
                 randomBotStatus.textContent = 'Stop Random';
@@ -458,7 +458,7 @@
             setBrush(randomBrush);
 
             // Generate random stroke points
-            
+
             // Generate random stroke points - now using 2 points instead of random(3,15)
             const numPoints = Math.floor(random(3, 15));
             const strokePoints = [];
@@ -488,7 +488,7 @@
             botCurrentStroke = strokePoints;
             botStrokeIndex = 0;
             isDrawingStroke = true;
-            
+
             // Mark that drawing has started
             if (!hasDrawn) {
                 hasDrawn = true;
@@ -500,23 +500,23 @@
             // Pick a random brush
             const randomBrush = brushTypes[Math.floor(Math.random() * brushTypes.length)];
             setBrush(randomBrush);
-            
+
             // Generate a random 2-point stroke
             const startX = random(0, width);
             const startY = random(0, height);
             const endX = random(0, width);
             const endY = random(0, height);
-            
+
             // Draw the stroke by interpolating between start and end points
             const steps = 10; // Number of interpolation steps for smooth stroke
-            
+
             for (let i = 0; i <= steps; i++) {
                 const t = i / steps;
                 pmouseX = lerp(startX, endX, Math.max(0, t - 0.1)); // Previous position
                 pmouseY = lerp(startY, endY, Math.max(0, t - 0.1));
                 mouseX = lerp(startX, endX, t); // Current position
                 mouseY = lerp(startY, endY, t);
-                
+
                 // Call the appropriate brush function
                 switch(currentBrush) {
                     case 'marker':
@@ -536,7 +536,7 @@
                         break;
                 }
             }
-            
+
             // Mark that drawing has started
             if (!hasDrawn) {
                 hasDrawn = true;
@@ -595,7 +595,7 @@
             document.getElementById('canvasWrapper').classList.remove('drawing');
 
             // Stop bot if active and reset its state
-            
+
             // Stop both bots if active and reset their states
             if (botActive) {
                 toggleBot();
@@ -630,7 +630,7 @@
 
             // Set initial drawing state
             strokeCap(ROUND);
-            
+
             // Setup color pickers
             setupColorPickers();
         }
@@ -682,35 +682,35 @@
             // Crayon with selected color and consistent texture
             const color = hexToRgb(brushColors.crayon);
             const baseColor = [color.r, color.g, color.b];
-            
+
             // Main opaque stroke
             fill(baseColor[0], baseColor[1], baseColor[2], 200);
             noStroke();
-            
+
             const distance = dist(mouseX, mouseY, pmouseX, pmouseY);
             const steps = Math.max(1, Math.floor(distance / 3));
-            
+
             for (let i = 0; i <= steps; i++) {
                 const x = lerp(pmouseX, mouseX, i / steps);
                 const y = lerp(pmouseY, mouseY, i / steps);
-                
+
                 // Main brush stroke - consistent size
                 circle(x, y, 12);
-                
+
                 // Texture effect - consistent sizes with selected color
                 for (let j = 0; j < 8; j++) {
                     const textureX = x + random(-10, 10);
                     const textureY = y + random(-10, 10);
-                    
+
                     fill(baseColor[0], baseColor[1], baseColor[2], 100);
                     circle(textureX, textureY, 6); // Fixed size
                 }
-                
+
                 // Additional subtle texture - consistent sizes with selected color
                 for (let k = 0; k < 4; k++) {
                     const textureX2 = x + random(-15, 15);
                     const textureY2 = y + random(-15, 15);
-                    
+
                     fill(baseColor[0], baseColor[1], baseColor[2], 50);
                     circle(textureX2, textureY2, 3); // Fixed size
                 }
@@ -734,6 +734,10 @@
         }
 
         function sprayPaint() {
+    // Only spray if there is movement
+            if (mouseX === pmouseX && mouseY === pmouseY) {
+                return;
+            }
             stroke(0, 0, 0, 180);
             strokeWeight(1);
 

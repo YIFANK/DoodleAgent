@@ -36,7 +36,7 @@ class DrawingCanvasBridge:
         self.driver = None
         self.canvas = None
         self.wait = None
-        
+
         # Video capture settings
         self.enable_video_capture = enable_video_capture
         self.capture_fps = capture_fps
@@ -45,7 +45,7 @@ class DrawingCanvasBridge:
         self.temp_dir = "temp_frames"
         self.video_writer = None
         self.capture_thread = None
-        
+
         # Current step info for overlays
         self.current_step_number = 0
         self.current_step_text = ""
@@ -73,7 +73,7 @@ class DrawingCanvasBridge:
         time.sleep(2)
 
         print("Drawing canvas interface loaded successfully")
-        
+
         # Initialize video capture if enabled
         if self.enable_video_capture:
             self._initialize_video_capture()
@@ -81,7 +81,7 @@ class DrawingCanvasBridge:
     def _initialize_video_capture(self):
         """Initialize video capture system"""
         self.session_start_time = datetime.now()
-        
+
         # Create temp directory for frames
         if not os.path.exists(self.temp_dir):
             os.makedirs(self.temp_dir)
@@ -90,54 +90,54 @@ class DrawingCanvasBridge:
             for file in os.listdir(self.temp_dir):
                 if file.endswith('.png'):
                     os.remove(os.path.join(self.temp_dir, file))
-        
+
         print(f"🎥 Video capture initialized at {self.capture_fps} fps")
 
     def start_video_capture(self, output_path: str = None):
         """Start capturing video frames during drawing"""
         if not self.enable_video_capture:
             return
-            
+
         if output_path is None:
             timestamp = self.session_start_time.strftime("%Y%m%d_%H%M%S")
             output_path = f"output/video/drawing_session_{timestamp}.mp4"
-            
+
         # Ensure output directory exists
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        
+
         self.video_output_path = output_path
         self.capturing = True
         self.frame_counter = 0
-        
+
         # Start capture thread
         self.capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
         self.capture_thread.start()
-        
+
         print(f"🎬 Started video capture: {output_path}")
 
     def stop_video_capture(self):
         """Stop video capture and compile video"""
         if not self.enable_video_capture or not self.capturing:
             return
-            
+
         self.capturing = False
-        
+
         # Wait for capture thread to finish
         if self.capture_thread:
             self.capture_thread.join(timeout=2.0)
-        
+
         # Compile video from frames
         self._compile_video()
-        
+
         # Cleanup temp frames
         self._cleanup_temp_frames()
-        
+
         print(f"🎉 Video capture completed: {self.video_output_path}")
 
     def _capture_loop(self):
         """Continuous frame capture loop"""
         capture_interval = 1.0 / self.capture_fps
-        
+
         while self.capturing:
             try:
                 self._capture_frame()
@@ -149,35 +149,35 @@ class DrawingCanvasBridge:
         """Capture a single frame with text overlay"""
         if not self.capturing or not self.driver:
             return
-            
+
         try:
             # Use JavaScript to capture canvas
             js_code = """
             const canvas = document.querySelector('#p5-canvas canvas');
             return canvas.toDataURL('image/png');
             """
-            
+
             data_url = self.driver.execute_script(js_code)
-            
+
             # Remove the data URL prefix
             image_data = data_url.split(',')[1]
-            
+
             # Decode the image
             image_bytes = base64.b64decode(image_data)
-            
+
             # Convert to PIL Image
             image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
-            
+
             # Add text overlay if step info is available
             if self.current_step_number > 0:
                 image = self._add_text_overlay(image)
-            
+
             # Save frame
             frame_path = os.path.join(self.temp_dir, f"frame_{self.frame_counter:06d}.png")
             image.save(frame_path)
-            
+
             self.frame_counter += 1
-            
+
         except Exception as e:
             print(f"Error capturing frame: {e}")
 
@@ -187,10 +187,10 @@ class DrawingCanvasBridge:
             # Create overlay
             overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
             draw = ImageDraw.Draw(overlay)
-            
+
             # Add semi-transparent background rectangle
             draw.rectangle([(10, 10), (image.width - 10, 100)], fill=(0, 0, 0, 180))
-            
+
             # Try to use a better font, fall back to default if not available
             try:
                 title_font = ImageFont.truetype("arial.ttf", 28)
@@ -208,10 +208,10 @@ class DrawingCanvasBridge:
                         # Use default font
                         title_font = ImageFont.load_default()
                         text_font = ImageFont.load_default()
-            
+
             # Add step number
             draw.text((20, 20), f"Step {self.current_step_number}", fill=(255, 255, 255, 255), font=title_font)
-            
+
             # Add reasoning text (wrap if too long)
             if self.current_step_text:
                 text_lines = self.current_step_text.split('. ')
@@ -221,11 +221,11 @@ class DrawingCanvasBridge:
                         line = line[:77] + "..."
                     draw.text((20, y_offset), line, fill=(255, 255, 255, 255), font=text_font)
                     y_offset += 25
-            
+
             # Combine images
             image = Image.alpha_composite(image.convert('RGBA'), overlay)
             return image.convert('RGB')
-            
+
         except Exception as e:
             print(f"Error adding text overlay: {e}")
             return image
@@ -235,40 +235,40 @@ class DrawingCanvasBridge:
         try:
             # Get all frame files
             frame_files = sorted([f for f in os.listdir(self.temp_dir) if f.endswith('.png')])
-            
+
             if not frame_files:
                 print("No frames to compile into video")
                 return
-            
+
             print(f"🎞️ Compiling {len(frame_files)} frames into video...")
-            
+
             # Use lower FPS for video playback to make it longer
             # We capture at 30 fps but play back at 10 fps = 3x longer video
             playback_fps = 10
-            
+
             # Create video writer with lower playback FPS
-            writer = imageio.get_writer(self.video_output_path, fps=playback_fps, 
+            writer = imageio.get_writer(self.video_output_path, fps=playback_fps,
                                      codec='libx264', quality=8)
-            
+
             try:
                 for i, frame_file in enumerate(frame_files):
                     frame_path = os.path.join(self.temp_dir, frame_file)
                     frame = imageio.imread(frame_path)
                     writer.append_data(frame)
-                    
+
                     # Progress indicator
                     if (i + 1) % 100 == 0:
                         print(f"  Processed {i + 1}/{len(frame_files)} frames...")
-            
+
             finally:
                 writer.close()
-            
+
             # Calculate video duration with playback FPS
             video_duration = len(frame_files) / playback_fps
             capture_duration = len(frame_files) / self.capture_fps
             print(f"📹 Video duration: {video_duration:.1f} seconds (captured in {capture_duration:.1f}s real-time)")
             print(f"🎬 Playback: {playback_fps} fps (captured at {self.capture_fps} fps)")
-            
+
         except Exception as e:
             print(f"Error compiling video: {e}")
 
@@ -335,7 +335,7 @@ class DrawingCanvasBridge:
             # Map brush types to their color picker IDs
             color_picker_map = {
                 "marker": "marker-color",
-                "crayon": "crayon-color", 
+                "crayon": "crayon-color",
                 "wiggle": "wiggle-color"
             }
 
@@ -373,7 +373,7 @@ class DrawingCanvasBridge:
             # Execute as a continuous stroke using JavaScript
             self._execute_continuous_stroke(x_coords, y_coords)
 
-    def _execute_continuous_stroke(self, x_coords: list, y_coords: list, step_length: int = 10, step_duration: int = 100):
+    def _execute_continuous_stroke(self, x_coords: list, y_coords: list, step_length: int = 30, step_duration: int = 90):
         """Execute a continuous stroke using JavaScript mouse events with smooth interpolation"""
         try:
             # Create JavaScript code to simulate drawing
@@ -456,13 +456,13 @@ class DrawingCanvasBridge:
                     const startY = y_coords[currentPointIndex];
                     const endX = x_coords[currentPointIndex + 1];
                     const endY = y_coords[currentPointIndex + 1];
-                    
+
                     // Calculate actual duration for this segment from timestamps
                     const length = Math.sqrt(Math.pow(startX - endX, 2) + Math.pow(startY - endY, 2));
                     const interpolationSteps = Math.ceil(length / step_length);
                     //fix step duration to be the same for all segments
                     const stepDuration = {step_duration};
-                    
+
                     console.log(`Segment ${{currentPointIndex}}: duration=${{stepDuration}}ms, stepDuration=${{stepDuration}}ms`);
 
                     // Create smooth interpolation between current and next point
@@ -471,9 +471,9 @@ class DrawingCanvasBridge:
                             const t = step / interpolationSteps;
                             const interpX = lerp(startX, endX, t);
                             const interpY = lerp(startY, endY, t);
-                            
+
                             simulateMouseEvent('mousemove', interpX, interpY);
-                            
+
                             // If this is the last step of this segment, move to next segment
                             if (step === interpolationSteps) {{
                                 currentPointIndex++;
@@ -552,7 +552,7 @@ class DrawingCanvasBridge:
         # Stop video capture if it's running
         if self.enable_video_capture and self.capturing:
             self.stop_video_capture()
-            
+
         if self.driver:
             self.driver.quit()
             print("Canvas interface closed")
@@ -654,7 +654,7 @@ class AutomatedDrawingCanvas:
             output_dir: Directory to save outputs
         """
         print(f"🎨 Starting creative drawing session with {num_iterations} iterations")
-        
+
         if self.enable_video_capture:
             print(f"🎥 Video capture enabled - recording drawing process")
 
@@ -702,10 +702,10 @@ class AutomatedDrawingCanvas:
 
             print(f"\n🎉 Creative session completed!")
             print(f"Final artwork saved as: {final_canvas}")
-            
+
             if self.enable_video_capture:
                 print(f"🎬 Video saved as: {video_output}")
-                
+
             print(f"\n📋 Session Summary:")
             for i, instruction in enumerate(instructions):
                 print(f"  Step {i+1}: {instruction.thinking}")
