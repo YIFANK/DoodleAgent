@@ -40,38 +40,58 @@ bridge = DrawingCanvasBridge()
 bridge.start_canvas_interface()
 
 def draw_marker_stroke_js(bridge, x_coords, y_coords, step_length, step_duration):
-    js_code = f'''
+    js_code = f"""
     const x_coords = {x_coords};
     const y_coords = {y_coords};
-    const steps_per_segment = Math.max(2, Math.floor({step_length}) || 2);
-    function lerp(a, b, t) {{ return a + (b - a) * t; }}
-    for (let i = 0; i < x_coords.length - 1; i++) {{
-        const startX = x_coords[i];
-        const startY = y_coords[i];
-        const endX = x_coords[i+1];
-        const endY = y_coords[i+1];
-        for (let s = 0; s <= steps_per_segment; s++) {{
-            const t = s / steps_per_segment;
-            const interpX = lerp(startX, endX, t);
-            const interpY = lerp(startY, endY, t);
-            window.pmouseX = (s === 0) ? startX : window.mouseX;
-            window.pmouseY = (s === 0) ? startY : window.mouseY;
-            window.mouseX = interpX;
-            window.mouseY = interpY;
-            if (typeof window['marker'] === 'function') {{
-                window['marker']();
+
+    function lerp(a, b, t) {{
+        return a + (b - a) * t;
+    }}
+
+    function sleep(ms) {{
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }}
+
+    async function draw() {{
+        window.mouseIsPressed = true;
+
+        for (let i = 0; i < x_coords.length - 1; i++) {{
+            const startX = x_coords[i];
+            const startY = y_coords[i];
+            const endX = x_coords[i + 1];
+            const endY = y_coords[i + 1];
+            const dx = endX - startX;
+            const dy = endY - startY;
+            const length = Math.hypot(dx, dy);
+            const steps_per_segment = Math.max(1, Math.floor(length / {step_length}));
+
+            for (let s = 0; s <= steps_per_segment; s++) {{
+                const t = s / steps_per_segment;
+                const interpX = lerp(startX, endX, t);
+                const interpY = lerp(startY, endY, t);
+
+                window.pmouseX = window.mouseX;
+                window.pmouseY = window.mouseY;
+                window.mouseX = interpX;
+                window.mouseY = interpY;
+
+                // Ensure at least one draw frame happens
+                await new Promise(requestAnimationFrame);
+                await sleep({step_duration});
             }}
         }}
-        if ({step_duration} > 0) {{
-            const start = Date.now();
-            while (Date.now() - start < {step_duration}) {{}}
-        }}
+
+        window.mouseIsPressed = false;
     }}
-    '''
+
+    draw();
+    """
     bridge.driver.execute_script(js_code)
 
+
+
 try:
-    for i in range(10):
+    for i in range(1,10):
         step_length = step_lengths[i]
         step_duration = step_durations[i]
         bridge.clear_canvas()
@@ -81,6 +101,8 @@ try:
             x = [xi + x_offset for xi in shape["x"]]
             y = [yi + y_offset for yi in shape["y"]]
             draw_marker_stroke_js(bridge, x, y, step_length, step_duration)
+            #wait for the last stroke to finish
+            time.sleep(3)
         time.sleep(1.2)
         filename = f"{output_dir}/marker_allshapes_len{step_length}_dur{step_duration}.png"
         bridge.capture_canvas(filename)

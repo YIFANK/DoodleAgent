@@ -716,21 +716,23 @@
                 }
             }
         }
-
+        let wiggleFlip = 0;  // global or brush-level
         function wiggle() {
             const color = hexToRgb(brushColors.wiggle);
             stroke(color.r, color.g, color.b, 255);
             strokeWeight(3);
             noFill();
 
-            const distance = dist(mouseX, mouseY, pmouseX, pmouseY);
+            const maxDist = 30;
+            const distance = Math.min(dist(mouseX, mouseY, pmouseX, pmouseY), maxDist);
             const midX = (mouseX + pmouseX) / 2;
             const midY = (mouseY + pmouseY) / 2;
 
             const angle = Math.atan2(mouseY - pmouseY, mouseX - pmouseX);
-            const flip = (frameCount % 2) * PI;
+            const flip = wiggleFlip * PI;
 
             arc(midX, midY, distance, distance, angle + flip, angle + PI + flip);
+            wiggleFlip = 1 - wiggleFlip;
         }
 
         function sprayPaint() {

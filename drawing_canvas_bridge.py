@@ -375,123 +375,54 @@ class DrawingCanvasBridge:
 
     def _execute_continuous_stroke(self, x_coords: list, y_coords: list, step_length: int = 30, step_duration: int = 90):
         """Execute a continuous stroke using JavaScript mouse events with smooth interpolation"""
-        try:
-            # Create JavaScript code to simulate drawing
-            js_code = f"""
-            // Get the canvas element
-            const canvasElement = document.querySelector('#p5-canvas canvas');
-            if (!canvasElement) {{
-                console.error('Canvas not found');
-                return;
-            }}
+        print(f"Executing continuous stroke with step_length: {step_length} and step_duration: {step_duration}")
+        js_code = f"""
+        const x_coords = {x_coords};
+        const y_coords = {y_coords};
 
-            const rect = canvasElement.getBoundingClientRect();
-            const x_coords = {x_coords};
-            const y_coords = {y_coords};
+        function lerp(a, b, t) {{
+            return a + (b - a) * t;
+        }}
 
-            console.log('Starting smooth stroke with coordinates:', x_coords, y_coords);
-            console.log('Initial pmouseX, pmouseY:', window.pmouseX, window.pmouseY);
-            console.log('Initial mouseX, mouseY:', window.mouseX, window.mouseY);
+        function sleep(ms) {{
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }}
 
-            // Simulate mouse events for drawing
-            function simulateMouseEvent(type, x, y) {{
-                const event = new MouseEvent(type, {{
-                    clientX: x + rect.left,
-                    clientY: y + rect.top,
-                    bubbles: true,
-                    cancelable: true,
-                    view: window
-                }});
-                canvasElement.dispatchEvent(event);
-            }}
+        async function draw() {{
+            window.mouseIsPressed = true;
 
-            // Linear interpolation function
-            function lerp(start, end, t) {{
-                return start + (end - start) * t;
-            }}
+            for (let i = 0; i < x_coords.length - 1; i++) {{
+                const startX = x_coords[i];
+                const startY = y_coords[i];
+                const endX = x_coords[i + 1];
+                const endY = y_coords[i + 1];
+                const dx = endX - startX;
+                const dy = endY - startY;
+                const length = Math.hypot(dx, dy);
+                const steps_per_segment = Math.max(1, Math.floor(length / {step_length}));
 
-            // CRITICAL FIX: Directly set p5.js mouse variables to prevent large first shape
-            const startX = x_coords[0];
-            const startY = y_coords[0];
+                for (let s = 0; s <= steps_per_segment; s++) {{
+                    const t = s / steps_per_segment;
+                    const interpX = lerp(startX, endX, t);
+                    const interpY = lerp(startY, endY, t);
 
-            // Set both current and previous mouse positions to the starting point
-            if (typeof window.mouseX !== 'undefined') {{
-                window.pmouseX = startX;
-                window.pmouseY = startY;
-                window.mouseX = startX;
-                window.mouseY = startY;
-                console.log('Manually set mouse positions to:', startX, startY);
-            }}
+                    window.pmouseX = window.mouseX;
+                    window.pmouseY = window.mouseY;
+                    window.mouseX = interpX;
+                    window.mouseY = interpY;
 
-            // Also try setting the global variables that p5.js might use
-            if (typeof pmouseX !== 'undefined') {{
-                pmouseX = startX;
-                pmouseY = startY;
-                mouseX = startX;
-                mouseY = startY;
-            }}
-
-            // Now start the drawing sequence
-            simulateMouseEvent('mousedown', startX, startY);
-
-            // Small delay after mousedown, then start moving
-            setTimeout(() => {{
-                console.log('Starting smooth movement - pmouseX:', window.pmouseX, 'pmouseY:', window.pmouseY);
-
-                // Create smooth interpolated movement between points using actual timestamps
-                let currentPointIndex = 0;
-                const step_length = {step_length}; // length of each step in pixels
-                //calculate the number of steps based on the step_length
-                function drawNextSegment() {{
-                    if (currentPointIndex >= x_coords.length - 1) {{
-                        // End the stroke
-                        setTimeout(() => {{
-                            simulateMouseEvent('mouseup', x_coords[x_coords.length - 1], y_coords[y_coords.length - 1]);
-                            console.log('Smooth stroke completed');
-                        }}, 20);
-                        return;
-                    }}
-
-                    const startX = x_coords[currentPointIndex];
-                    const startY = y_coords[currentPointIndex];
-                    const endX = x_coords[currentPointIndex + 1];
-                    const endY = y_coords[currentPointIndex + 1];
-
-                    // Calculate actual duration for this segment from timestamps
-                    const length = Math.sqrt(Math.pow(startX - endX, 2) + Math.pow(startY - endY, 2));
-                    const interpolationSteps = Math.ceil(length / step_length);
-                    //fix step duration to be the same for all segments
-                    const stepDuration = {step_duration};
-
-                    console.log(`Segment ${{currentPointIndex}}: duration=${{stepDuration}}ms, stepDuration=${{stepDuration}}ms`);
-
-                    // Create smooth interpolation between current and next point
-                    for (let step = 1; step <= interpolationSteps; step++) {{
-                        setTimeout(() => {{
-                            const t = step / interpolationSteps;
-                            const interpX = lerp(startX, endX, t);
-                            const interpY = lerp(startY, endY, t);
-
-                            simulateMouseEvent('mousemove', interpX, interpY);
-
-                            // If this is the last step of this segment, move to next segment
-                            if (step === interpolationSteps) {{
-                                currentPointIndex++;
-                                setTimeout(drawNextSegment, stepDuration); // Minimum 20ms delay
-                            }}
-                        }}, step * stepDuration); // Minimum 10ms per step
-                    }}
+                    // Ensure at least one draw frame happens
+                    await new Promise(requestAnimationFrame);
+                    await sleep({step_duration});
                 }}
+            }}
 
-                // Start drawing the first segment
-                drawNextSegment();
-            }}, 100);  // Reduced initial delay
-            """
+            window.mouseIsPressed = false;
+        }}
 
-            self.driver.execute_script(js_code) #this will execute the stroke
-
-        except Exception as e:
-            print(f"Warning: Stroke execution failed: {e}")
+        draw();
+        """
+        self.driver.execute_script(js_code)
 
     def execute_instruction(self, instruction: DrawingInstruction, step_number: int = 0):
         """Execute a complete drawing instruction with optional video capture"""

@@ -58,9 +58,7 @@ def draw_fountain_stroke_js(bridge, x_coords, y_coords, step_length, step_durati
             window.pmouseY = (s === 0) ? startY : window.mouseY;
             window.mouseX = interpX;
             window.mouseY = interpY;
-            if (typeof window['fountainPen'] === 'function') {{
-                window['fountainPen']();
-            }}
+            window['fountainPen']();
         }}
         if ({step_duration} > 0) {{
             const start = Date.now();
