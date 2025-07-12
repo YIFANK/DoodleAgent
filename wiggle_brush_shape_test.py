@@ -40,51 +40,46 @@ bridge = DrawingCanvasBridge()
 bridge.start_canvas_interface() 
 
 def draw_wiggle_stroke_js(bridge, x_coords, y_coords, step_length, step_duration):
-    js_code = f"""
+    js_code = f'''
     const x_coords = {x_coords};
     const y_coords = {y_coords};
-
-    function lerp(a, b, t) {{
-        return a + (b - a) * t;
-    }}
-
-    function sleep(ms) {{
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }}
-
-    async function draw() {{
+    const fixed_step_length = {step_length};
+    
+    function lerp(a, b, t) {{ return a + (b - a) * t; }}
+    
+    for (let i = 0; i < x_coords.length - 1; i++) {{
+        const startX = x_coords[i];
+        const startY = y_coords[i];
+        const endX = x_coords[i+1];
+        const endY = y_coords[i+1];
         
-        for (let i = 0; i < x_coords.length - 1; i++) {{
-            const startX = x_coords[i];
-            const startY = y_coords[i];
-            const endX = x_coords[i + 1];
-            const endY = y_coords[i + 1];
-            const dx = endX - startX;
-            const dy = endY - startY;
-            const length = Math.hypot(dx, dy);
-            const steps_per_segment = Math.max(1, Math.floor(length / {step_length}));
-
-            for (let s = 0; s <= steps_per_segment; s++) {{
-                const t = s / steps_per_segment;
-                const interpX = lerp(startX, endX, t);
-                const interpY = lerp(startY, endY, t);
-
-                window.pmouseX = (s === 0) ? startX : window.mouseX;
-                window.pmouseY = (s === 0) ? startY : window.mouseY;
-                window.mouseX = interpX;
-                window.mouseY = interpY;
-
-                // Ensure at least one draw frame happens
-                await new Promise(requestAnimationFrame);
-                await sleep({step_duration});
+        // Calculate distance between this pair of points
+        const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+        
+        // Calculate steps needed for this specific stroke
+        const steps_per_segment = Math.max(1, Math.floor(distance / fixed_step_length));
+        
+        for (let s = 0; s <= steps_per_segment; s++) {{
+            const t = s / steps_per_segment;
+            const interpX = lerp(startX, endX, t);
+            const interpY = lerp(startY, endY, t);
+            window.pmouseX = (s === 0) ? startX : window.mouseX;
+            window.pmouseY = (s === 0) ? startY : window.mouseY;
+            window.mouseX = interpX;
+            window.mouseY = interpY;
+            // Only call wigglePaint if there is movement
+            if ((window.mouseX !== window.pmouseX) || (window.mouseY !== window.pmouseY)) {{
+                if (typeof window['wiggle'] === 'function') {{
+                    window['wiggle']();
+                }}
             }}
         }}
-
-        window.mouseIsPressed = false;
+        if ({step_duration} > 0) {{
+            const start = Date.now();
+            while (Date.now() - start < {step_duration}) {{}}
+        }}
     }}
-
-    draw();
-    """
+    '''
     bridge.driver.execute_script(js_code)
 
 
