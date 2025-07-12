@@ -116,9 +116,9 @@
             color: white;
         }
 
-        .brush-btn.spray {
+        .brush-btn.spray{
             background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-            color: white;
+            color: white;   
         }
 
         .brush-btn.fountain {
@@ -529,10 +529,10 @@
                         wiggle();
                         break;
                     case 'spray':
-                        sprayPaint();
+                        spray();
                         break;
                     case 'fountain':
-                        fountainPen();
+                        fountain();
                         break;
                 }
             }
@@ -575,7 +575,7 @@
                         sprayPaint();
                         break;
                     case 'fountain':
-                        fountainPen();
+                        fountain();
                         break;
                 }
 
@@ -660,10 +660,10 @@
                         wiggle();
                         break;
                     case 'spray':
-                        sprayPaint();
+                        spray();
                         break;
                     case 'fountain':
-                        fountainPen();
+                        fountain();
                         break;
                 }
             }
@@ -716,26 +716,23 @@
                 }
             }
         }
-        let wiggleFlip = 0;  // global or brush-level
         function wiggle() {
             const color = hexToRgb(brushColors.wiggle);
             stroke(color.r, color.g, color.b, 255);
             strokeWeight(3);
             noFill();
 
-            const maxDist = 30;
-            const distance = Math.min(dist(mouseX, mouseY, pmouseX, pmouseY), maxDist);
+            const distance = dist(mouseX, mouseY, pmouseX, pmouseY);
             const midX = (mouseX + pmouseX) / 2;
             const midY = (mouseY + pmouseY) / 2;
 
             const angle = Math.atan2(mouseY - pmouseY, mouseX - pmouseX);
-            const flip = wiggleFlip * PI;
+            const flip = (frameCount % 2) * PI;
 
             arc(midX, midY, distance, distance, angle + flip, angle + PI + flip);
-            wiggleFlip = 1 - wiggleFlip;
         }
 
-        function sprayPaint() {
+        function spray() {
     // Only spray if there is movement
             if (mouseX === pmouseX && mouseY === pmouseY) {
                 return;
@@ -762,7 +759,7 @@
             }
         }
 
-        function fountainPen() {
+        function fountain() {
             stroke(0, 0, 0, 255);
             strokeWeight(1);
             const width = 4;

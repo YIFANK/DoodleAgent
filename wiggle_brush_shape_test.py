@@ -39,74 +39,28 @@ os.makedirs(output_dir, exist_ok=True)
 bridge = DrawingCanvasBridge()
 bridge.start_canvas_interface() 
 
-def draw_wiggle_stroke_js(bridge, x_coords, y_coords, step_length, step_duration):
-    js_code = f'''
-    const x_coords = {x_coords};
-    const y_coords = {y_coords};
-    const fixed_step_length = {step_length};
-    const step_delay = {step_duration}; // delay between each point
-    
-    function lerp(a, b, t) {{ return a + (b - a) * t; }}
-    
-    async function drawStroke() {{
-        for (let i = 0; i < x_coords.length - 1; i++) {{
-            const startX = x_coords[i];
-            const startY = y_coords[i];
-            const endX = x_coords[i+1];
-            const endY = y_coords[i+1];
-            
-            // Calculate distance between this pair of points
-            const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
-            
-            // Calculate steps needed for this specific stroke
-            const steps_per_segment = Math.max(1, Math.floor(distance / fixed_step_length));
-            
-            for (let s = 0; s <= steps_per_segment; s++) {{
-                const t = s / steps_per_segment;
-                const interpX = lerp(startX, endX, t);
-                const interpY = lerp(startY, endY, t);
-                window.pmouseX = (s === 0) ? startX : window.mouseX;
-                window.pmouseY = (s === 0) ? startY : window.mouseY;
-                window.mouseX = interpX;
-                window.mouseY = interpY;
-                
-                // Only call sprayPaint if there is movement
-                # if ((window.mouseX !== window.pmouseX) || (window.mouseY !== window.pmouseY)) {{
-                #     if (typeof window['wiggle'] === 'function') {{
-                #         window['wiggle']();
-                #     }}
-                # }}
-                
-                // Add delay between each point for smooth drawing
-                if (step_delay > 0 && s < steps_per_segment) {{
-                    await new Promise(resolve => setTimeout(resolve, step_delay));
-                }}
-            }}
-        }}
-    }}
-    
-    drawStroke();
-    '''
-    bridge.driver.execute_script(js_code)
+def draw_stroke_js(bridge, x_coords, y_coords, step_length, step_duration, brush_type):
+    bridge._execute_continuous_stroke(x_coords,y_coords,step_length,step_duration,brush_type)
 
-
-
-try:
+def test_draw(step_lengths, step_durations, brush_type):
     for i in range(1,10):
         step_length = step_lengths[i]
         step_duration = step_durations[i]
         bridge.clear_canvas()
-        bridge.set_brush("wiggle")
         for shape, x_offset in zip(shapes, x_offsets):
             # Offset the shape horizontally and vertically
             x = [xi + x_offset for xi in shape["x"]]
             y = [yi + y_offset for yi in shape["y"]]
-            draw_wiggle_stroke_js(bridge, x, y, step_length, step_duration)
-            #wait for the last stroke to finish
-            time.sleep(3)
+            draw_stroke_js(bridge, x, y, step_length, step_duration, brush_type)
+            # time.sleep(3)
         time.sleep(1.2)
-        filename = f"{output_dir}/wiggle_allshapes_len{step_length}_dur{step_duration}.png"
+        filename = f"{output_dir}/{brush_type}_allshapes_len{step_length}_dur{step_duration}.png"
         bridge.capture_canvas(filename)
         print(f"Saved: {filename}")
-finally:
-    bridge.close()
+
+if __name__ == "__main__":
+    test_draw(step_lengths, step_durations, "fountainPen")
+    test_draw(step_lengths, step_durations, "marker")
+    test_draw(step_lengths, step_durations, "pen")
+    test_draw(step_lengths, step_durations, "sprayPaint")
+    test_draw(step_lengths, step_durations, "wiggle")

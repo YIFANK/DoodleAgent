@@ -359,23 +359,36 @@ class DrawingCanvasBridge:
         except Exception as e:
             print(f"Error setting color for brush '{brush_type}': {e}")
 
-    def execute_stroke(self, stroke: dict):
+    def execute_stroke(self, stroke: dict,brush_type: str = "pen"):
         """Execute a single stroke on the canvas"""
         if not self.canvas:
             print("Warning: Canvas not initialized, skipping stroke")
             return
 
         # Handle multi-point stroke
+        best_params = {"fountain": [28,70], "marker": [8,20], "spray": [20,50], "wiggle": [16,40]}
+        step_length = best_params[brush_type][0]
+        step_duration = best_params[brush_type][1]
         if "x" in stroke and "y" in stroke:
             x_coords = stroke["x"]
             y_coords = stroke["y"]
 
             # Execute as a continuous stroke using JavaScript
-            self._execute_continuous_stroke(x_coords, y_coords)
+            self._execute_continuous_stroke(x_coords = x_coords, y_coords = y_coords, brush_type = brush_type)
 
-    def _execute_continuous_stroke(self, x_coords: list, y_coords: list, step_length: int = 30, step_duration: int = 90,brush_type: str = "pen"):
+    def _execute_continuous_stroke(self, x_coords: list, y_coords: list, step_length: int = 20, step_duration: int = 50,brush_type: str = "fountain"):
         """Execute a continuous stroke using JavaScript mouse events with smooth interpolation"""
         print(f"Executing continuous stroke with step_length: {step_length} and step_duration: {step_duration}")
+        # Calculate total time for stroke execution
+        total_time = 0
+        for i in range(len(x_coords)-1):
+            # Calculate distance between points
+            distance = ((x_coords[i+1] - x_coords[i])**2 + (y_coords[i+1] - y_coords[i])**2)**0.5
+            # Calculate steps needed for this segment
+            steps_per_segment = max(1, int(distance / step_length))
+            # Add time for each step in segment
+            total_time += steps_per_segment * step_duration
+        print(f"Total stroke execution time: {total_time/1000:.2f} seconds")        
         js_code = f'''
         const x_coords = {x_coords};
         const y_coords = {y_coords};
@@ -406,7 +419,7 @@ class DrawingCanvasBridge:
                     window.mouseX = interpX;
                     window.mouseY = interpY;
                     
-                    // Only call sprayPaint if there is movement
+                    // Only call brush_type if there is movement
                     if ((window.mouseX !== window.pmouseX) || (window.mouseY !== window.pmouseY)) {{
                         if (typeof window['{brush_type}'] === 'function') {{
                             window['{brush_type}']();
@@ -423,7 +436,11 @@ class DrawingCanvasBridge:
         
         drawStroke();
         '''
-        bridge.driver.execute_script(js_code)
+        self.driver.execute_script(js_code)
+        #wait for the stroke to finish
+        time.sleep(total_time/1000 + 0.5)
+        
+        
     def execute_instruction(self, instruction: DrawingInstruction, step_number: int = 0):
         """Execute a complete drawing instruction with optional video capture"""
         print(f"Executing instruction: {instruction.thinking}")
@@ -439,7 +456,7 @@ class DrawingCanvasBridge:
         # Execute all strokes
         for i, stroke in enumerate(instruction.strokes):
             print(f"  Drawing stroke {i+1}/{len(instruction.strokes)}")
-            self.execute_stroke(stroke)
+            self.execute_stroke(stroke,instruction.brush)
 
     def capture_canvas(self, filename: str = "current_canvas.png"):
         """Capture the current canvas as an image"""
