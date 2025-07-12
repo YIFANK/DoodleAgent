@@ -43,33 +43,49 @@ def draw_spray_stroke_js(bridge, x_coords, y_coords, step_length, step_duration)
     js_code = f'''
     const x_coords = {x_coords};
     const y_coords = {y_coords};
-    const steps_per_segment = Math.max(2, Math.floor({step_length}) || 2);
+    const fixed_step_length = {step_length};
+    const step_delay = {step_duration}; // delay between each point
+    
     function lerp(a, b, t) {{ return a + (b - a) * t; }}
-    for (let i = 0; i < x_coords.length - 1; i++) {{
-        const startX = x_coords[i];
-        const startY = y_coords[i];
-        const endX = x_coords[i+1];
-        const endY = y_coords[i+1];
-        for (let s = 0; s <= steps_per_segment; s++) {{
-            const t = s / steps_per_segment;
-            const interpX = lerp(startX, endX, t);
-            const interpY = lerp(startY, endY, t);
-            window.pmouseX = (s === 0) ? startX : window.mouseX;
-            window.pmouseY = (s === 0) ? startY : window.mouseY;
-            window.mouseX = interpX;
-            window.mouseY = interpY;
-            // Only call sprayPaint if there is movement
-            if ((window.mouseX !== window.pmouseX) || (window.mouseY !== window.pmouseY)) {{
-                if (typeof window['sprayPaint'] === 'function') {{
-                    window['sprayPaint']();
+    
+    async function drawStroke() {{
+        for (let i = 0; i < x_coords.length - 1; i++) {{
+            const startX = x_coords[i];
+            const startY = y_coords[i];
+            const endX = x_coords[i+1];
+            const endY = y_coords[i+1];
+            
+            // Calculate distance between this pair of points
+            const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+            
+            // Calculate steps needed for this specific stroke
+            const steps_per_segment = Math.max(1, Math.floor(distance / fixed_step_length));
+            
+            for (let s = 0; s <= steps_per_segment; s++) {{
+                const t = s / steps_per_segment;
+                const interpX = lerp(startX, endX, t);
+                const interpY = lerp(startY, endY, t);
+                window.pmouseX = (s === 0) ? startX : window.mouseX;
+                window.pmouseY = (s === 0) ? startY : window.mouseY;
+                window.mouseX = interpX;
+                window.mouseY = interpY;
+                
+                // Only call sprayPaint if there is movement
+                if ((window.mouseX !== window.pmouseX) || (window.mouseY !== window.pmouseY)) {{
+                    if (typeof window['sprayPaint'] === 'function') {{
+                        window['sprayPaint']();
+                    }}
+                }}
+                
+                // Add delay between each point for smooth drawing
+                if (step_delay > 0 && s < steps_per_segment) {{
+                    await new Promise(resolve => setTimeout(resolve, step_delay));
                 }}
             }}
         }}
-        if ({step_duration} > 0) {{
-            const start = Date.now();
-            while (Date.now() - start < {step_duration}) {{}}
-        }}
     }}
+    
+    drawStroke();
     '''
     bridge.driver.execute_script(js_code)
 
