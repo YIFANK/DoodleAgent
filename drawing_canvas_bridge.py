@@ -374,7 +374,7 @@ class DrawingCanvasBridge:
             y_coords = stroke["y"]
 
             # Execute as a continuous stroke using JavaScript
-            self._execute_continuous_stroke(x_coords = x_coords, y_coords = y_coords, brush_type = brush_type)
+            self._execute_continuous_stroke(x_coords = x_coords, y_coords = y_coords, step_length = step_length, step_duration = step_duration, brush_type = brush_type)
 
     def _execute_continuous_stroke(self, x_coords: list, y_coords: list, step_length: int = 20, step_duration: int = 50,brush_type: str = "fountain"):
         """Execute a continuous stroke using JavaScript mouse events with smooth interpolation"""
