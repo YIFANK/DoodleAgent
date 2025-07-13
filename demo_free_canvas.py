@@ -139,8 +139,8 @@ def main():
             video_output = f"{run_output_dir}/mood_session_{timestamp}.mp4"
             canvas.bridge.start_video_capture(video_output)
 
-            # Run for 30 automatic iterations
-            num_iterations = 30
+            # Run for 15 automatic iterations
+            num_iterations = 15
             try:
                 for step in range(1, num_iterations + 1):
                     print(f"\n--- Mood Step {step} ---")

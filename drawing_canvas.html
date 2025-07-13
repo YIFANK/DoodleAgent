@@ -716,6 +716,7 @@
                 }
             }
         }
+        let wiggle_flip = 0;
         function wiggle() {
             const color = hexToRgb(brushColors.wiggle);
             stroke(color.r, color.g, color.b, 255);
@@ -727,7 +728,8 @@
             const midY = (mouseY + pmouseY) / 2;
 
             const angle = Math.atan2(mouseY - pmouseY, mouseX - pmouseX);
-            const flip = (frameCount % 2) * PI;
+            const flip = wiggle_flip * PI;
+            wiggle_flip = 1 - wiggle_flip;
 
             arc(midX, midY, distance, distance, angle + flip, angle + PI + flip);
         }
