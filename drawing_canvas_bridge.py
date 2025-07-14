@@ -366,7 +366,7 @@ class DrawingCanvasBridge:
             return
 
         # Handle multi-point stroke
-        best_params = {"fountain": [28,70], "marker": [8,20], "spray": [20,50], "wiggle": [16,40]}
+        best_params = {"fountain": [28,70], "marker": [8,20], "spray": [20,50], "wiggle": [8,20], "crayon": [8,20]}
         step_length = best_params[brush_type][0]
         step_duration = best_params[brush_type][1]
         if "x" in stroke and "y" in stroke:
@@ -388,28 +388,28 @@ class DrawingCanvasBridge:
             steps_per_segment = max(1, int(distance / step_length))
             # Add time for each step in segment
             total_time += steps_per_segment * step_duration
-        print(f"Total stroke execution time: {total_time/1000:.2f} seconds")        
+        print(f"Total stroke execution time: {total_time/1000:.2f} seconds")
         js_code = f'''
         const x_coords = {x_coords};
         const y_coords = {y_coords};
         const fixed_step_length = {step_length};
         const step_delay = {step_duration}; // delay between each point
-        
+
         function lerp(a, b, t) {{ return a + (b - a) * t; }}
-        
+
         async function drawStroke() {{
             for (let i = 0; i < x_coords.length - 1; i++) {{
                 const startX = x_coords[i];
                 const startY = y_coords[i];
                 const endX = x_coords[i+1];
                 const endY = y_coords[i+1];
-                
+
                 // Calculate distance between this pair of points
                 const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
-                
+
                 // Calculate steps needed for this specific stroke
                 const steps_per_segment = Math.max(1, Math.floor(distance / fixed_step_length));
-                
+
                 for (let s = 0; s <= steps_per_segment; s++) {{
                     const t = s / steps_per_segment;
                     const interpX = lerp(startX, endX, t);
@@ -418,14 +418,14 @@ class DrawingCanvasBridge:
                     window.pmouseY = (s === 0) ? startY : window.mouseY;
                     window.mouseX = interpX;
                     window.mouseY = interpY;
-                    
+
                     // Only call brush_type if there is movement
                     if ((window.mouseX !== window.pmouseX) || (window.mouseY !== window.pmouseY)) {{
                         if (typeof window['{brush_type}'] === 'function') {{
                             window['{brush_type}']();
                         }}
                     }}
-                    
+
                     // Add delay between each point for smooth drawing
                     if (step_delay > 0 && s < steps_per_segment) {{
                         await new Promise(resolve => setTimeout(resolve, step_delay));
@@ -433,14 +433,14 @@ class DrawingCanvasBridge:
                 }}
             }}
         }}
-        
+
         drawStroke();
         '''
         self.driver.execute_script(js_code)
         #wait for the stroke to finish
         time.sleep(total_time/1000 + 0.5)
-        
-        
+
+
     def execute_instruction(self, instruction: DrawingInstruction, step_number: int = 0):
         """Execute a complete drawing instruction with optional video capture"""
         print(f"Executing instruction: {instruction.thinking}")
