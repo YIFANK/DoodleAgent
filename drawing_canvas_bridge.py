@@ -559,7 +559,11 @@ class AutomatedDrawingCanvas:
         # Capture current canvas state
         self.bridge.capture_canvas(canvas_filename)
 
-        # Create mood-based drawing instruction
+        # Create a random mood first
+        if emotion is None:
+            random_emotion = self.agent._get_random_mood()
+            print(f"Random emotion: {random_emotion}")
+            emotion = random_emotion
         instruction = self.agent.create_emotion_drawing_instruction(
             canvas_filename, emotion
         )

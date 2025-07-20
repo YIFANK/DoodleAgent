@@ -408,177 +408,18 @@ class FreeDrawingAgent:
         Returns:
             DrawingInstruction object with mood-based drawing instructions
         """
-
-        # Determine mood selection strategy
+        # Determine emotion if not provided
         if emotion is None:
-            # Check if this is the first stroke on a blank canvas
             if self._is_canvas_blank(canvas_image_path):
-                chosen_mood = self._get_random_mood()
-                print(f"🎭 First stroke - Selected random mood: {chosen_mood}")
-                use_specific_mood = True
+                emotion = self._get_random_mood()
             else:
-                print(f"🎭 Continuing session - AI will choose mood based on current canvas")
-                use_specific_mood = False
-                chosen_mood = None
-        else:
-            chosen_mood = emotion
-            print(f"🎭 Using specified mood: {chosen_mood}")
-            use_specific_mood = True
+                emotion = "continue previous emotion"  # Let AI choose based on context
 
-        # Encode the canvas image
-        image_data = self.encode_image(canvas_image_path)
+        # Create emotion-based question
+        user_question = f"Express the emotion or mood of '{emotion}' in your next drawing strokes. What would you like to draw next?"
 
-        # Prepare the user message
-        if use_specific_mood:
-            # First stroke or manually specified mood
-            user_text = f"Express the mood '{chosen_mood}' through your drawing. Look at the current canvas and create art that embodies this emotional atmosphere. Output your drawing instruction in the required JSON format."
-        else:
-            # Subsequent strokes - let AI choose mood based on canvas
-            user_text = "Look at the current canvas and choose an artistic mood that continues or evolves from what's already there. Then create art that expresses that mood. Output your drawing instruction in the required JSON format."
-
-        # Add stroke history context for spatial reasoning
-        stroke_context = self._get_stroke_history_context()
-        if stroke_context:
-            user_text += stroke_context
-
-        if use_specific_mood:
-            # First stroke or manually specified mood
-            user_message = {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": self._get_image_media_type(canvas_image_path),
-                            "data": image_data
-                        }
-                    },
-                    {
-                        "type": "text",
-                        "text": user_text
-                    }
-                ]
-            }
-        else:
-            # Subsequent strokes - let AI choose mood based on canvas
-            user_message = {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": self._get_image_media_type(canvas_image_path),
-                            "data": image_data
-                        }
-                    },
-                    {
-                        "type": "text",
-                        "text": user_text
-                    }
-                ]
-            }
-
-        raw_response = ""
-        parsed_instruction = None
-        parsing_success = False
-        error_info = None
-
-        try:
-            # Create the response using Anthropic client
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=6000,
-                temperature=1,
-                messages=[user_message],
-                system=self._get_emotion_system_prompt()
-            )
-
-            # Extract the response content
-            raw_response = response.content[0].text
-
-            # Parse the JSON response
-            action_data = self._parse_json_response(raw_response)
-
-            # If parsing failed, create a default action
-            if action_data is None:
-                parsing_success = False
-                error_info = "JSON parsing failed - could not extract valid JSON from response"
-                print(f"Could not parse JSON from response: {raw_response}")
-
-                # Use chosen mood or random mood as fallback
-                fallback_mood = chosen_mood or self._get_random_mood()
-
-                action_data = {
-                    "thinking": f"Default action with {fallback_mood} mood due to parsing failure",
-                    "mood": fallback_mood,
-                    "brush": "marker",
-                    "strokes": [
-                        {
-                            "x": [400, 450],
-                            "y": [250, 275],
-                            "t": [2]
-                        }
-                    ]
-                }
-            else:
-                parsing_success = True
-                # For first stroke, ensure the LLM response includes the chosen mood
-                if use_specific_mood and "mood" not in action_data:
-                    action_data["mood"] = chosen_mood
-
-            # Validate and sanitize the response
-            mood_for_validation = chosen_mood if use_specific_mood else action_data.get("mood", "unknown")
-            validated_data = self._validate_and_sanitize_emotion(action_data, mood_for_validation)
-
-            # Track brush usage for variety
-            self._track_brush_usage(validated_data["brush"])
-
-            # Create the drawing instruction
-            parsed_instruction = DrawingInstruction(
-                brush=validated_data["brush"],
-                color=validated_data["color"],
-                strokes=validated_data["strokes"],
-                thinking=f"Mood: {validated_data.get('mood', mood_for_validation)} - {validated_data.get('thinking', 'No thinking provided')}"
-            )
-
-        except Exception as e:
-            parsing_success = False
-            error_info = f"Exception during processing: {str(e)}"
-            print(f"Error creating emotion drawing instruction: {e}")
-
-            # Create a fallback instruction
-            fallback_mood = chosen_mood or self._get_random_mood()
-            parsed_instruction = DrawingInstruction(
-                brush="marker",
-                color="default",
-                strokes=[
-                    {
-                        "x": [400, 450],
-                        "y": [250, 275],
-                        "t": [2]
-                    }
-                ],
-                thinking=f"Fallback instruction for {fallback_mood} mood due to error: {str(e)}"
-            )
-
-        # Track stroke history for spatial reasoning (before logging)
-        if parsed_instruction:
-            self._track_stroke_history(parsed_instruction)
-
-        # Log the interaction
-        mood_description = chosen_mood if use_specific_mood else "AI-chosen mood"
-        self._log_agent_interaction(
-            canvas_image_path=canvas_image_path,
-            user_question=f"Emotion drawing: {mood_description}",
-            raw_response=raw_response,
-            parsed_instruction=parsed_instruction,
-            parsing_success=parsing_success,
-            error_info=error_info
-        )
-
-        return parsed_instruction
+        # Use base create_drawing_instruction with emotion context
+        return self.create_drawing_instruction(canvas_image_path, user_question)
 
     def create_abstract_drawing_instruction(self, canvas_image_path: str) -> DrawingInstruction:
         """
@@ -748,86 +589,10 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use “default
 """
 
     def _get_emotion_system_prompt(self) -> str:
-        """Return the system prompt for mood-based drawing"""
-        color_palette_info = self.get_color_palette_description()
-
-        return f"""You are a creative artist. Draw what you want on the canvas.
-
-Canvas: 850px wide × 500px tall. Coordinates: x=horizontal (0-850), y=vertical (0-500). Origin (0,0) is top-left.
-
-Example strokes:
-- Vertical line: {{x: [100, 100], y: [50, 200]}}
-- Horizontal line: {{x: [50, 200], y: [100, 100]}}
-- U curve (smile): {{x: [200, 250, 300, 350, 400], y: [250, 240, 230, 240, 250]}}
-- N curve (frown): {{x: [200, 250, 300, 350, 400], y: [230, 240, 250, 240, 230]}}
-
-With simple strokes, you can compose complex shapes such as squares, circles, triangles, etc.
-
-Brushes:
-- marker: Bold colored strokes
-- crayon: Textured colored strokes
-- wiggle: Wavy colored lines
-- spray: Scattered black dots
-- fountain: Elegant black strokes
-
-{color_palette_info}
-
-**OBSERVE THE CANVAS CAREFULLY, then OUTPUT ONLY THIS JSON FORMAT:**
-
-{{
-  "thinking": "First, observe what's currently on the canvas. Then describe your planned action step-by-step: where you'll draw, what brush/color you'll use, and why this placement makes artistic sense. Be specific about coordinates and spatial relationships.",
-  "brush": "string",
-  "color": "string",
-  "strokes": [
-    {{
-      "x": [number, number, number],
-      "y": [number, number, number],        
-    }}
-  ]
-}}
-
-For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default"."""
+        return self._get_system_prompt()
 
     def _get_abstract_system_prompt(self) -> str:
-        """Return the system prompt for abstract drawing"""
-        color_palette_info = self.get_color_palette_description()
-
-        return f"""You are a creative artist. Draw what you want on the canvas.
-
-Canvas: 850px wide × 500px tall. Coordinates: x=horizontal (0-850), y=vertical (0-500). Origin (0,0) is top-left.
-
-Example strokes:
-- Vertical line: {{x: [100, 100], y: [50, 200]}}
-- Horizontal line: {{x: [50, 200], y: [100, 100]}}
-- U curve (smile): {{x: [200, 250, 300, 350, 400], y: [250, 240, 230, 240, 250]}}
-- N curve (frown): {{x: [200, 250, 300, 350, 400], y: [230, 240, 250, 240, 230]}}
-
-With simple strokes, you can compose complex shapes such as squares, circles, triangles, etc.
-
-Brushes:
-- marker: Bold colored strokes
-- crayon: Textured colored strokes
-- wiggle: Wavy colored lines
-- spray: Scattered black dots
-- fountain: Elegant black strokes
-
-{color_palette_info}
-
-**OBSERVE THE CANVAS CAREFULLY, then OUTPUT ONLY THIS JSON FORMAT:**
-
-{{
-  "thinking": "First, observe what's currently on the canvas. Then describe your planned action step-by-step: where you'll draw, what brush/color you'll use, and why this placement makes artistic sense. Be specific about coordinates and spatial relationships.",
-  "brush": "string",
-  "color": "string",
-  "strokes": [
-    {{
-      "x": [number, number, number],
-      "y": [number, number, number],
-    }}
-  ]
-}}
-
-For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default"."""
+        return self._get_system_prompt()
 
     def _validate_and_sanitize_emotion(self, data: Dict, emotion: str) -> Dict:
         """Validate and sanitize the emotion drawing instruction data"""

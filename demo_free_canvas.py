@@ -116,7 +116,7 @@ def main():
                     # Show strokes summary
                     print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
                     for i, stroke in enumerate(instruction.strokes):
-                        print(f"   {i+1}. {stroke['x']}, {stroke['y']}, {stroke['timing']}")
+                        print(f"   {i+1}. {stroke['x']}, {stroke['y']}")
 
                 # Save final interactive artwork
                 canvas.bridge.capture_canvas(f"{run_output_dir}/interactive_final.png")
@@ -141,6 +141,8 @@ def main():
 
             # Run for 15 automatic iterations
             num_iterations = 15
+            #get users input for the mood
+            mood = input("Enter a mood for the AI to express: ")
             try:
                 for step in range(1, num_iterations + 1):
                     print(f"\n--- Mood Step {step} ---")
@@ -148,7 +150,7 @@ def main():
 
                     # Execute mood-based drawing step (LLM determines mood autonomously)
                     canvas_file = f"{run_output_dir}/mood_step_{step}.png"
-                    instruction = canvas.draw_from_emotion(canvas_file, step_number=step)  # No mood parameter - LLM chooses
+                    instruction = canvas.draw_from_emotion(canvas_file, emotion=mood, step_number=step)  # No mood parameter - LLM chooses
 
                     print(f"🎨 AI's mood: {instruction.thinking}")
                     print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
@@ -156,7 +158,7 @@ def main():
                     # Show strokes summary
                     print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
                     for i, stroke in enumerate(instruction.strokes):
-                        print(f"   {i+1}. {stroke['x']}, {stroke['y']}, {stroke['timing']}")
+                        print(f"   {i+1}. {stroke['x']}, {stroke['y']}")
 
                 # Save final mood-based artwork
                 canvas.bridge.capture_canvas(f"{run_output_dir}/mood_final.png")
@@ -195,7 +197,7 @@ def main():
                     # Show strokes summary
                     print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
                     for i, stroke in enumerate(instruction.strokes):
-                        print(f"   {i+1}. {stroke['x']}, {stroke['y']}, {stroke['timing']}")
+                        print(f"   {i+1}. {stroke['x']}, {stroke['y']}")
 
                 # Save final abstract artwork
                 canvas.bridge.capture_canvas(f"{run_output_dir}/abstract_final.png")
