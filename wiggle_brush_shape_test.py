@@ -59,8 +59,9 @@ def test_draw(step_lengths, step_durations, brush_type):
         print(f"Saved: {filename}")
 
 if __name__ == "__main__":
+    test_draw(step_lengths, step_durations, "crayon")
     # test_draw(step_lengths, step_durations, "fountainPen")
     # test_draw(step_lengths, step_durations, "marker")
     # test_draw(step_lengths, step_durations, "pen")
     # test_draw(step_lengths, step_durations, "sprayPaint")
-    test_draw(step_lengths, step_durations, "wiggle")
+    # test_draw(step_lengths, step_durations, "wiggle")

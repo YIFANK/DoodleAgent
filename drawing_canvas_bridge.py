@@ -366,7 +366,7 @@ class DrawingCanvasBridge:
             return
 
         # Handle multi-point stroke
-        best_params = {"fountain": [28,70], "marker": [8,20], "spray": [20,50], "wiggle": [16,40]}
+        best_params = {"fountain": [28,70], "marker": [8,20], "spray": [20,50], "wiggle": [4,10],'crayon': [4,10]}
         step_length = best_params[brush_type][0]
         step_duration = best_params[brush_type][1]
         if "x" in stroke and "y" in stroke:

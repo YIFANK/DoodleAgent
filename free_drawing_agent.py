@@ -233,13 +233,14 @@ class FreeDrawingAgent:
         image_data = self.encode_image(canvas_image_path)
 
         # Prepare the user message
-        user_text = f"{user_question}\n\nLook at the current canvas and decide what you'd like to draw next. Output your drawing instruction in the required JSON format."
+        user_text = ""
 
         # Add stroke history context for spatial reasoning
         stroke_context = self._get_stroke_history_context()
         if stroke_context:
-            user_text += stroke_context
-
+            user_text = stroke_context
+        user_text += f"\n\n{user_question} Output your drawing instruction in the required JSON format."
+        # print("user_text",user_text)
         user_message = {
             "role": "user",
             "content": [
@@ -657,7 +658,6 @@ class FreeDrawingAgent:
                         {
                             "x": [400, 450, 500],
                             "y": [250, 200, 275],
-                            "t": [3, 2]
                         }
                     ]
                 }
@@ -691,7 +691,6 @@ class FreeDrawingAgent:
                     {
                         "x": [400, 450, 500],
                         "y": [250, 200, 275],
-                        "t": [3, 2]
                     }
                 ],
                 thinking=f"Fallback abstract instruction due to error: {str(e)}"
@@ -781,8 +780,7 @@ Brushes:
   "strokes": [
     {{
       "x": [number, number, number],
-      "y": [number, number, number],
-      "t": [number, number]
+      "y": [number, number, number],        
     }}
   ]
 }}
@@ -824,7 +822,6 @@ Brushes:
     {{
       "x": [number, number, number],
       "y": [number, number, number],
-      "t": [number, number, number]
     }}
   ]
 }}
@@ -860,8 +857,7 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
             strokes = [
                 {
                     "x": [400, 450],
-                    "y": [250, 275],
-                    "t": [2]
+                    "y": [250, 275],    
                 }
             ]
 
@@ -871,25 +867,12 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
             if "x" in stroke and "y" in stroke:
                 x_coords = stroke["x"] if isinstance(stroke["x"], list) else [stroke["x"]]
                 y_coords = stroke["y"] if isinstance(stroke["y"], list) else [stroke["y"]]
-                timing = stroke.get("t", [])
 
                 # Ensure same length for x and y
                 min_len = min(len(x_coords), len(y_coords))
                 x_coords = x_coords[:min_len]
                 y_coords = y_coords[:min_len]
 
-                # Validate timing array
-                if not isinstance(timing, list):
-                    timing = []
-
-                # Timing should have length = len(x_coords) - 1
-                expected_timing_len = max(0, len(x_coords) - 1)
-                if len(timing) != expected_timing_len:
-                    # Fill with default timing values
-                    timing = [2] * expected_timing_len  # Default medium speed
-
-                # Clamp timing values to 1-5
-                timing = [max(1, min(5, int(t))) for t in timing]
 
                 # Clamp coordinates to canvas bounds
                 x_coords = [max(0, min(850, float(x))) for x in x_coords]
@@ -898,7 +881,6 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                 validated_strokes.append({
                     "x": x_coords,
                     "y": y_coords,
-                    "timing": timing
                 })
 
         return {
@@ -935,7 +917,6 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                 {
                     "x": [400, 450, 500],
                     "y": [250, 200, 275],
-                    "t": [3, 2]
                 }
             ]
 
@@ -945,25 +926,11 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
             if "x" in stroke and "y" in stroke:
                 x_coords = stroke["x"] if isinstance(stroke["x"], list) else [stroke["x"]]
                 y_coords = stroke["y"] if isinstance(stroke["y"], list) else [stroke["y"]]
-                timing = stroke.get("t", [])
 
                 # Ensure same length for x and y
                 min_len = min(len(x_coords), len(y_coords))
                 x_coords = x_coords[:min_len]
                 y_coords = y_coords[:min_len]
-
-                # Validate timing array
-                if not isinstance(timing, list):
-                    timing = []
-
-                # Timing should have length = len(x_coords) - 1
-                expected_timing_len = max(0, len(x_coords) - 1)
-                if len(timing) != expected_timing_len:
-                    # Fill with default timing values
-                    timing = [2] * expected_timing_len  # Default medium speed
-
-                # Clamp timing values to 1-5
-                timing = [max(1, min(5, int(t))) for t in timing]
 
                 # Clamp coordinates to canvas bounds
                 x_coords = [max(0, min(850, float(x))) for x in x_coords]
@@ -974,7 +941,6 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                     validated_strokes.append({
                         "x": x_coords,
                         "y": y_coords,
-                        "timing": timing
                     })
 
         if not validated_strokes:
@@ -982,7 +948,6 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                 {
                     "x": [400, 425, 450],  # Interpolated version
                     "y": [250, 262, 275],
-                    "timing": [2]
                 }
             ]
 
@@ -1055,7 +1020,6 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                 {
                     "x": [400, 450],
                     "y": [250, 275],
-                    "t": [100, 200]
                 }
             ]
 
@@ -1065,24 +1029,11 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
             if "x" in stroke and "y" in stroke:
                 x_coords = stroke["x"] if isinstance(stroke["x"], list) else [stroke["x"]]
                 y_coords = stroke["y"] if isinstance(stroke["y"], list) else [stroke["y"]]
-                timing = stroke.get("t", [])
 
                 # Ensure same length for x and y
                 min_len = min(len(x_coords), len(y_coords))
                 x_coords = x_coords[:min_len]
                 y_coords = y_coords[:min_len]
-
-                # Validate timing array
-                if not isinstance(timing, list):
-                    timing = []
-
-                # Timing should have length = len(x_coords)
-                expected_timing_len = max(0, len(x_coords))
-                if len(timing) != expected_timing_len:
-                    # Fill with default timing values
-                    for i in range(expected_timing_len):
-                        timing.append(100 * i)
-                    print("corrected timing", timing)
 
                 # Clamp coordinates to canvas bounds
                 x_coords = [max(0, min(850, x)) for x in x_coords]
@@ -1093,7 +1044,6 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                     validated_strokes.append({
                         "x": x_coords,
                         "y": y_coords,
-                        "timing": timing
                     })
 
         if not validated_strokes:
@@ -1102,11 +1052,10 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                 {
                     "x": [400, 425, 450],  # Interpolated version
                     "y": [250, 262, 275],
-                    "timing": [100, 200, 300]
                 }
             ]
 
-        thinking = data.get("thinking", "Creative expression")[:300]
+        thinking = data.get("thinking", "Creative expression")
 
         return {
             "brush": brush,
@@ -1130,12 +1079,6 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                 "thinking": instruction.thinking,
                 "x_coords": stroke.get("x", []),
                 "y_coords": stroke.get("y", []),
-                "x_range": (min(stroke.get("x", [400])),
-                           max(stroke.get("x", [400]))),
-                "y_range": (min(stroke.get("y", [250])),
-                           max(stroke.get("y", [250]))),
-                "center_x": sum(stroke.get("x", [400])) / len(stroke.get("x", [400])),
-                "center_y": sum(stroke.get("y", [250])) / len(stroke.get("y", [250]))
             }
             self.stroke_history.append(stroke_info)
 
@@ -1151,22 +1094,9 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
         context = "\n\n🎨 SPATIAL CONTEXT - Previous Strokes on Canvas:\n"
 
         # Group strokes by general canvas regions for better spatial understanding
-        for i, stroke in enumerate(self.stroke_history[-5:], 1):  # Last 5 strokes
-            # Determine region
-            center_x, center_y = stroke["center_x"], stroke["center_y"]
-            region = self._get_canvas_region(center_x, center_y)
-
-            context += f"Stroke {len(self.stroke_history) - 5 + i}:\n"
-            context += f"  Location: {region} (center: {int(center_x)}, {int(center_y)})\n"
-            context += f"  X range: {int(stroke['x_range'][0])}-{int(stroke['x_range'][1])}, Y range: {int(stroke['y_range'][0])}-{int(stroke['y_range'][1])}\n"
-            context += f"  Brush: {stroke['brush']}\n"
-            context += f"  Purpose: {stroke['thinking'][:80]}...\n\n"
-
-        context += "💡 SPATIAL AWARENESS TIPS:\n"
-        context += "- Consider the positions of existing strokes when planning new ones\n"
-        context += "- Use coordinate ranges to position elements relative to existing artwork\n"
-        context += "- Build on or complement existing elements for cohesive composition\n"
-        context += "- Canvas size is 850px wide × 500px tall\n"
+        context = "Previous strokes on canvas: "
+        for stroke in self.stroke_history:
+            context += f"Brush: {stroke['brush']}\n, Thinking: {stroke['thinking']}\n, X: {stroke['x_coords']}\n, Y: {stroke['y_coords']}\n\n"
 
         return context
 
