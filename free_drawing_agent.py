@@ -217,7 +217,7 @@ class FreeDrawingAgent:
         except Exception as e:
             print(f"Warning: Failed to append to log files: {e}")
 
-    def create_drawing_instruction(self, canvas_image_path: str, user_question: str = "What would you like to draw next?") -> DrawingInstruction:
+    def create_drawing_instruction(self, canvas_image_path: str, user_question: str = "What would you like to draw next?",with_context: bool = True) -> DrawingInstruction:
         """
         Analyze the current canvas and decide what to draw next.
 
@@ -236,9 +236,10 @@ class FreeDrawingAgent:
         user_text = ""
 
         # Add stroke history context for spatial reasoning
-        stroke_context = self._get_stroke_history_context()
-        if stroke_context:
-            user_text = stroke_context
+        if with_context:
+            stroke_context = self._get_stroke_history_context()
+            if stroke_context:
+                user_text = stroke_context
         user_text += f"\n\n{user_question} Output your drawing instruction in the required JSON format."
         # print("user_text",user_text)
         user_message = {
