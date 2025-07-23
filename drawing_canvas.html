@@ -297,8 +297,6 @@
             <button class="brush-btn wiggle" onclick="setBrush('wiggle')">〰️ Wiggle</button>
             <button class="brush-btn spray" onclick="setBrush('spray')">🎨 Spray</button>
             <button class="brush-btn fountain" onclick="setBrush('fountain')">🖋️ Fountain</button>
-            <button class="brush-btn bot-btn" onclick="toggleBot()">🤖 <span id="bot-status">Start Bot</span></button>
-            <button class="brush-btn bot-btn" onclick="toggleRandomBot()">🎲 <span id="random-bot-status">Random Bot</span></button>
         </div>
 
         <div class="color-section">
@@ -331,16 +329,7 @@
         let currentBrush = 'marker';
         let hasDrawn = false;
 
-        // Bot variables
-        let botActive = false;
-        let botInterval;
-        let botCurrentStroke = [];
-        let botStrokeIndex = 0;
-        let isDrawingStroke = false;
 
-        // Random bot variables
-        let randomBotActive = false;
-        let randomBotInterval;
 
         // Color variables for each brush
         let brushColors = {
@@ -387,224 +376,12 @@
                 brushColors.wiggle = e.target.value;
             });
         }
-
-        function toggleBot() {
-            botActive = !botActive;
-            const botButton = document.querySelector('.bot-btn');
-            const botStatus = document.getElementById('bot-status');
-
-            if (botActive) {
-                botButton.classList.add('active');
-                botStatus.textContent = 'Stop Bot';
-                startBot();
-            } else {
-                botButton.classList.remove('active');
-                botStatus.textContent = 'Start Bot';
-                stopBot();
-            }
-        }
-
-        function toggleRandomBot() {
-            randomBotActive = !randomBotActive;
-            const randomBotButton = document.querySelectorAll('.bot-btn')[1]; // Second bot button
-            const randomBotStatus = document.getElementById('random-bot-status');
-
-            if (randomBotActive) {
-                randomBotButton.classList.add('active');
-                randomBotStatus.textContent = 'Stop Random';
-                startRandomBot();
-            } else {
-                randomBotButton.classList.remove('active');
-                randomBotStatus.textContent = 'Random Bot';
-                stopRandomBot();
-            }
-        }
-
-        function startBot() {
-            // Generate strokes continuously with minimal delay
-            botInterval = setInterval(() => {
-                if (botActive) {
-                    generateBotStroke();
-                }
-            }, 100); // Much faster generation
-        }
-
-        function startRandomBot() {
-            // Draw random strokes every 200ms
-            randomBotInterval = setInterval(() => {
-                if (randomBotActive) {
-                    drawRandomStroke();
-                }
-            }, 200);
-        }
-
-        function stopBot() {
-            if (botInterval) {
-                clearInterval(botInterval);
-            }
-            isDrawingStroke = false;
-            botCurrentStroke = [];
-        }
-
-        function stopRandomBot() {
-            if (randomBotInterval) {
-                clearInterval(randomBotInterval);
-            }
-        }
-
-        function generateBotStroke() {
-            // Pick a random brush
-            const randomBrush = brushTypes[Math.floor(Math.random() * brushTypes.length)];
-            setBrush(randomBrush);
-
-            // Generate random stroke points
-
-            // Generate random stroke points - now using 2 points instead of random(3,15)
-            const numPoints = Math.floor(random(3, 15));
-            const strokePoints = [];
-
-            // Starting point
-            let startX = random(50, width - 50);
-            let startY = random(50, height - 50);
-
-            for (let i = 0; i < numPoints; i++) {
-                // Generate points that create a natural stroke path
-                const angle = random(0, TWO_PI);
-                const distance = random(10, 50);
-                const x = startX + cos(angle) * distance * i * 0.3;
-                const y = startY + sin(angle) * distance * i * 0.3;
-
-                // Keep points within canvas bounds
-                strokePoints.push({
-                    x: constrain(x, 10, width - 10),
-                    y: constrain(y, 10, height - 10)
-                });
-
-                // Update starting point for next segment (creates flowing strokes)
-                startX = strokePoints[strokePoints.length - 1].x + random(-20, 20);
-                startY = strokePoints[strokePoints.length - 1].y + random(-20, 20);
-            }
-
-            botCurrentStroke = strokePoints;
-            botStrokeIndex = 0;
-            isDrawingStroke = true;
-
-            // Mark that drawing has started
-            if (!hasDrawn) {
-                hasDrawn = true;
-                document.getElementById('canvasWrapper').classList.add('drawing');
-            }
-        }
-
-        function drawRandomStroke() {
-            // Pick a random brush
-            const randomBrush = brushTypes[Math.floor(Math.random() * brushTypes.length)];
-            setBrush(randomBrush);
-
-            // Generate a random 2-point stroke
-            const startX = random(0, width);
-            const startY = random(0, height);
-            const endX = random(0, width);
-            const endY = random(0, height);
-
-            // Draw the stroke by interpolating between start and end points
-            const steps = 10; // Number of interpolation steps for smooth stroke
-
-            for (let i = 0; i <= steps; i++) {
-                const t = i / steps;
-                pmouseX = lerp(startX, endX, Math.max(0, t - 0.1)); // Previous position
-                pmouseY = lerp(startY, endY, Math.max(0, t - 0.1));
-                mouseX = lerp(startX, endX, t); // Current position
-                mouseY = lerp(startY, endY, t);
-
-                // Call the appropriate brush function
-                switch(currentBrush) {
-                    case 'marker':
-                        marker();
-                        break;
-                    case 'crayon':
-                        crayon();
-                        break;
-                    case 'wiggle':
-                        wiggle();
-                        break;
-                    case 'spray':
-                        spray();
-                        break;
-                    case 'fountain':
-                        fountain();
-                        break;
-                }
-            }
-
-            // Mark that drawing has started
-            if (!hasDrawn) {
-                hasDrawn = true;
-                document.getElementById('canvasWrapper').classList.add('drawing');
-            }
-        }
-
-        function drawBotStroke() {
-            if (!isDrawingStroke || botCurrentStroke.length === 0) return;
-
-            // Draw multiple points per frame for smoother strokes
-            const pointsPerFrame = 2;
-
-            for (let i = 0; i < pointsPerFrame && botStrokeIndex < botCurrentStroke.length - 1; i++) {
-                const currentPoint = botCurrentStroke[botStrokeIndex];
-                const nextPoint = botCurrentStroke[botStrokeIndex + 1];
-
-                // Simulate mouse position for brush functions
-                mouseX = currentPoint.x;
-                mouseY = currentPoint.y;
-                pmouseX = nextPoint.x;
-                pmouseY = nextPoint.y;
-
-                // Call the appropriate brush function
-                switch(currentBrush) {
-                    case 'marker':
-                        marker();
-                        break;
-                    case 'crayon':
-                        crayon();
-                        break;
-                    case 'wiggle':
-                        wiggle();
-                        break;
-                    case 'spray':
-                        sprayPaint();
-                        break;
-                    case 'fountain':
-                        fountain();
-                        break;
-                }
-
-                botStrokeIndex++;
-            }
-
-            // End stroke when all points are drawn
-            if (botStrokeIndex >= botCurrentStroke.length - 1) {
-                isDrawingStroke = false;
-                botCurrentStroke = [];
-            }
-        }
-
         function clearCanvas() {
             background('#fbf8f3');
             hasDrawn = false;
             document.getElementById('canvasWrapper').classList.remove('drawing');
-
-            // Stop bot if active and reset its state
-
-            // Stop both bots if active and reset their states
-            if (botActive) {
-                toggleBot();
-            }
-            if (randomBotActive) {
-                toggleRandomBot();
-            }
-            isDrawingStroke = false;
-            botCurrentStroke = [];
+            // clear the canvas
+            clear();
         }
 
         function saveCanvas() {
@@ -636,10 +413,6 @@
         }
 
         function draw() {
-            // Handle bot drawing
-            if (botActive && isDrawingStroke) {
-                drawBotStroke();
-            }
 
             // Handle user drawing
             if (mouseIsPressed && mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {

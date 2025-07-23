@@ -291,6 +291,7 @@ class DrawingCanvasBridge:
 
     def set_brush(self, brush_type: str, color: str = "default"):
         """Set the brush type and color in the interface using the brush buttons and color pickers"""
+        print(f"Setting brush: {brush_type} with color: {color}")
         try:
             # Map brush types to button classes in drawing_canvas.html
             brush_button_map = {
@@ -564,7 +565,7 @@ class AutomatedDrawingCanvas:
             random_emotion = self.agent._get_random_mood()
             print(f"Random emotion: {random_emotion}")
             emotion = random_emotion
-        instruction = self.agent.create_emotion_drawing_instruction(
+        instruction = self.agent.create_drawing_instruction(
             canvas_filename, emotion
         )
 

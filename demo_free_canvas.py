@@ -9,7 +9,9 @@ import os
 import sys
 from dotenv import load_dotenv
 from drawing_canvas_bridge import AutomatedDrawingCanvas
-
+import random
+import math
+from free_drawing_agent import DrawingInstruction
 # Load environment variables from .env file
 load_dotenv()
 
@@ -94,17 +96,17 @@ def main():
 
             step = 0
             try:
-                while True:
+                # Get initial question that will guide the entire drawing session
+                question = input("What would you like the AI to draw? (or 'quit'): ").strip()
+                if question.lower() in ['quit', 'exit', 'stop']:
+                    return
+                
+                if not question:
+                    question = "Create an abstract artistic composition"
+                max_steps = 15
+                while step < max_steps:
                     step += 1
                     print(f"\n--- Interactive Step {step} ---")
-
-                    # Get user question
-                    question = input("What would you like to ask the AI to draw? (or 'quit'): ").strip()
-                    if question.lower() in ['quit', 'exit', 'stop']:
-                        break
-
-                    if not question:
-                        question = "What would you like to draw next?"
 
                     # Execute drawing step
                     canvas_file = f"{run_output_dir}/interactive_step_{step}.png"
@@ -161,9 +163,9 @@ def main():
                         print(f"   {i+1}. {stroke['x']}, {stroke['y']}")
 
                 # Save final mood-based artwork
-                canvas.bridge.capture_canvas(f"{run_output_dir}/mood_final.png")
+                canvas.bridge.capture_canvas(f"{run_output_dir}/mood_{mood}.png")
                 print(f"\n🎉 Mood-based session completed!")
-                print(f"Final artwork saved as: {run_output_dir}/mood_final.png")
+                print(f"Final artwork saved as: {run_output_dir}/mood_{mood}.png")
                 print(f"🎬 Video saved as: {video_output}")
                 
             finally:
@@ -208,7 +210,90 @@ def main():
             finally:
                 # Stop video capture
                 canvas.bridge.stop_video_capture()
+        elif choice == "7":
+            #random strokes
+            # print("\n🎯 Running Random Strokes Demo...")
+            # print("The AI will create random strokes on the canvas.")
+            # print("🎥 Video recording enabled - capturing the entire random strokes session!")
 
+            # # Start video capture for random strokes session
+            # video_output = f"{run_output_dir}/random_strokes_session_{timestamp}.mp4"
+            # canvas.bridge.start_video_capture(video_output)
+            num_iterations = 15
+            try:
+                for step in range(1, num_iterations + 1):
+                    print(f"\n--- Random Stroke Step {step} ---")
+                    
+                    # Random stroke length between 3-7 points
+                    stroke_length = random.randint(3, 7)
+                    
+                    # Random starting point
+                    start_x = random.uniform(0, 850)  # Keep within canvas bounds
+                    start_y = random.uniform(0, 500)
+                    
+                    # Generate points for the stroke
+                    x_points = [start_x]
+                    y_points = [start_y]
+                    
+                    # Circle radius for next point sampling
+                    radius = 100
+                    
+                    # Generate subsequent points
+                    for _ in range(stroke_length - 1):
+                        # Get last point
+                        last_x = x_points[-1]
+                        last_y = y_points[-1]
+                        
+                        # Random angle and distance within circle
+                        angle = random.uniform(0, 2 * math.pi)
+                        distance = random.uniform(0, radius)
+                        
+                        # Calculate next point
+                        #do random next point
+                        # next_x = random.uniform(0,850)
+                        # next_y = random.uniform(0,500)
+                        next_x = last_x + distance * math.cos(angle)
+                        next_y = last_y + distance * math.sin(angle)
+                        
+                        # # Keep within canvas bounds
+                        next_x = max(0, min(850, next_x))
+                        next_y = max(0, min(500, next_y))
+                        
+                        x_points.append(next_x)
+                        y_points.append(next_y)
+                    
+                    # Random color from palette
+                    color_family = random.choice(list(canvas.agent.color_palette.keys()))
+                    color = random.choice(list(canvas.agent.color_palette[color_family].values()))
+                    # Random brush
+                    brush = random.choice(['marker', 'crayon', 'wiggle', 'spray', 'fountain'])
+                    print(x_points,y_points)
+                    # Create stroke data
+                    stroke = {
+                        'x': x_points,
+                        'y': y_points,      
+                    }
+                    
+                    # Execute the stroke
+                    instruction = DrawingInstruction(
+                        brush=brush,
+                        color=color,
+                        strokes=[stroke],
+                        thinking=f"Random stroke with {brush} brush"
+                    )
+                    canvas.bridge.execute_instruction(instruction, step)
+                    
+                    print(f"🖌️ Drew {stroke_length}-point stroke with {brush} brush in {color}")
+                
+                # Save final random strokes artwork
+                canvas.bridge.capture_canvas(f"{run_output_dir}/random_strokes_final.png")
+                print(f"\n🎉 Random strokes session completed!")
+                # print(f"Final artwork saved as: {run_output_dir}/random_strokes_final.png")
+                # print(f"🎬 Video saved as: {video_output}")
+                
+            finally:
+                # Stop video capture
+                canvas.bridge.stop_video_capture()
         else:
             print("Invalid choice, running quick demo...")
             canvas.creative_session(num_iterations=3, output_dir=run_output_dir)
@@ -218,10 +303,10 @@ def main():
 
     except KeyboardInterrupt:
         print("\n⚠️ Demo interrupted by user")
-    except Exception as e:
-        print(f"\n❌ Error during demo: {e}")
-        import traceback
-        traceback.print_exc()
+    # except Exception as e:
+    #     print(f"\n❌ Error during demo: {e}")
+    #     import traceback
+    #     traceback.print_exc()
 
     finally:
         canvas.close()
