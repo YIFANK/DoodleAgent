@@ -16,18 +16,18 @@ shapes = [
     },
     {
         "name": "u_curve",
-        "x": [0, 50, 100, 150, 200],
-        "y": [100, 90, 80, 90, 100]
+        "x": [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150],
+        "y": [190, 140, 120, 110, 100, 100, 100, 110, 120, 140, 190]
     },
     {
         "name": "n_curve",
-        "x": [0, 50, 100, 150, 200],
-        "y": [80, 90, 100, 90, 80]
+        "x": [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150],
+        "y": [0, 50, 80, 90, 100, 100, 100, 90, 80, 50, 0]
     }
 ]
 
 # Offsets for each shape (so they appear side by side)
-x_offsets = [100, 300, 500, 700]
+x_offsets = [100, 300, 500, 650]
 y_offset = 150
 
 step_lengths = [i * 4 for i in range(10)]      # 0, 4, 8, ..., 36
@@ -37,7 +37,7 @@ output_dir = "wiggle_shape_test_results"
 os.makedirs(output_dir, exist_ok=True)
 
 bridge = DrawingCanvasBridge()
-bridge.start_canvas_interface() 
+bridge.start_canvas_interface()
 
 def draw_stroke_js(bridge, x_coords, y_coords, step_length, step_duration, brush_type):
     bridge._execute_continuous_stroke(x_coords,y_coords,step_length,step_duration,brush_type)

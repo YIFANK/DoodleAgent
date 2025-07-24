@@ -422,6 +422,8 @@ class FreeDrawingAgent:
         # Use base create_drawing_instruction with emotion context
         return self.create_drawing_instruction(canvas_image_path, user_question,mood=emotion)
 
+
+        return parsed_instruction
     def create_abstract_drawing_instruction(self, canvas_image_path: str) -> DrawingInstruction:
         """
         Create an abstract, non-representational drawing instruction.
@@ -559,8 +561,8 @@ class FreeDrawingAgent:
         """Return the system prompt for the drawing agent"""
         color_palette_info = self.get_color_palette_description()
 
-        return f"""You are a visionary abstract artist who creates pure, non-representational art. Your mission is to create abstract doodles that noone has seen before.
- You have access to a digital canvas and a comprehensive set of drawing tools. Select brushes, adjust their size/color/opacity, make strokes, and create whatever you want. Observe your work as you draw and adapt your technique.
+        return f"""You are a creative artist who loves to doodle! Draw whatever feels fun and interesting to you right now. Let your imagination run free. You have access to a digital canvas and a set of drawing tools. Select brushes, adjust their color, make strokes, and create whatever you want. Observe your work and think as you draw.
+The canvas and tools you can utilize is listed below:
 Canvas: 850px wide × 500px tall. Coordinates: x=horizontal (0-850), y=vertical (0-500). Origin (0,0) is top-left.
 Brushes:
 - marker: Bold colored strokes
@@ -569,16 +571,50 @@ Brushes:
 - spray: Scattered black dots
 - fountain: Elegant black strokes
 {color_palette_info}
-**OBSERVE THE CANVAS CAREFULLY, then OUTPUT EXACTLY ONE JSON OBJECT IN THIS FORMAT:**
-**CRITICAL: Return ONLY ONE JSON object, not multiple. You can include multiple strokes in the strokes array.**
+**OBSERVE THE CANVAS CAREFULLY, then OUTPUT ONLY THIS JSON FORMAT:**
 {{
-  "thinking": "First, observe what's currently on the canvas. Then describe your planned action step-by-step: where you'll draw, what brush/color you'll use, and why this placement makes artistic sense. Be specific about coordinates and spatial relationships.",
-  "brush": "string",
-  "color": "string",
-  "strokes": [
+ “thinking”: “First, observe what’s currently on the canvas. Then describe your planned action step-by-step: where you’ll draw, what brush/color you’ll use, and why this placement makes artistic sense. Be specific about coordinates and spatial relationships.“,
+ “brush”: “string”,
+ “color”: “string”,
+ “strokes”: [
+   {{
+     “x”: [number, number, number],
+     “y”: [number, number, number],
+   }}
+ ]
+}}
+Basic shapes:
+- Vertical line: {{x: [100, 100], y: [50, 200]}}
+- Horizontal line: {{x: [50, 200], y: [100, 100]}}
+- U curve: {{x: [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150], y: [190, 140, 120, 110, 100, 100, 100, 110, 120, 140, 190]}}
+- n curve: {{x: [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150], y: [0, 50, 80, 90, 100, 100, 100, 90, 80, 50, 0]}}
+For marker/crayon/wiggle: use palette colors. For spray/fountain: use “default”.
+"""
+
+    def _get_emotion_system_prompt(self, mood: str) -> str:
+        """Return the emotion-specific system prompt with user-specified mood"""
+        color_palette_info = self.get_color_palette_description()
+
+        return f"""You are a creative artist who channels emotions through visual expression. Your feeling {mood} will guide you through your doodle and motivate your thinking. Build a cohesive emotional narrative with each stroke.
+    You have access to a digital canvas and a set of drawing tools. Select brushes, adjust their color, make strokes, and create whatever you want. Observe your work and think as you draw.
+    The canvas and tools you can utilize is listed below:
+    Canvas: 850px wide × 500px tall. Coordinates: x=horizontal (0-850), y=vertical (0-500). Origin (0,0) is top-left.
+    Brushes:
+    - marker: Bold colored strokes
+    - crayon: Textured colored strokes
+    - wiggle: Wavy colored lines
+    - spray: Scattered black dots
+    - fountain: Elegant black strokes
+    {color_palette_info}
+    **OBSERVE THE CANVAS CAREFULLY, then OUTPUT ONLY THIS JSON FORMAT:**
     {{
-      "x": [number, number, number],
-      "y": [number, number, number],
+    "thinking": "First, observe what's currently on the canvas. Then describe your planned action step-by-step: where you'll draw, what brush/color you'll use, and why this placement makes artistic sense to your mood. Be specific about coordinates and spatial relationships.",
+    "brush": "string",
+    "color": "string",
+    "strokes": [
+    {{
+        "x": [number, number, number],
+        "y": [number, number, number],
     }}
   ]
 }}
@@ -655,7 +691,7 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use “default
             strokes = [
                 {
                     "x": [400, 450],
-                    "y": [250, 275],    
+                    "y": [250, 275],
                 }
             ]
 
@@ -760,7 +796,7 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use “default
     def _parse_json_response(self, content: str) -> Optional[Dict]:
         """Parse JSON from the response content, handling multiple JSON objects by taking the first one"""
         import re
-        
+
         # Method 1: Try to extract JSON from markdown code blocks first
         json_pattern = r'```(?:json)?\s*(\{.*?\})\s*```'
         matches = re.findall(json_pattern, content, re.DOTALL)
@@ -774,28 +810,28 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use “default
         start_idx = content.find('{')
         if start_idx == -1:
             return None
-            
+
         # Use a more robust approach to find the matching closing brace
         brace_count = 0
         end_idx = -1
         in_string = False
         escape_next = False
-        
+
         for i in range(start_idx, len(content)):
             char = content[i]
-            
+
             if escape_next:
                 escape_next = False
                 continue
-                
+
             if char == '\\':
                 escape_next = True
                 continue
-                
+
             if char == '"' and not escape_next:
                 in_string = not in_string
                 continue
-                
+
             if not in_string:
                 if char == '{':
                     brace_count += 1
@@ -804,14 +840,14 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use “default
                     if brace_count == 0:
                         end_idx = i + 1
                         break
-        
+
         if end_idx != -1:
             json_str = content[start_idx:end_idx]
             try:
                 return json.loads(json_str)
             except json.JSONDecodeError as e:
                 print(f"JSON parsing error: {e}")
-                
+
                 # Method 3: Try to fix common JSON issues
                 try:
                     json_str = json_str.rstrip(', \n\r\t')
