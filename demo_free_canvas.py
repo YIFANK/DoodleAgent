@@ -30,7 +30,7 @@ def main():
     canvas_url = f"file://{current_dir}/drawing_canvas.html"
 
     # Initialize the automated drawing canvas with video capture enabled
-    canvas = AutomatedDrawingCanvas(api_key=openai_api_key, canvas_url=canvas_url, enable_video_capture=True, capture_fps=30)
+    canvas = AutomatedDrawingCanvas(api_key=claude_api_key, canvas_url=canvas_url, enable_video_capture=True, capture_fps=30,model_type="claude")
 
     try:
         print("🎨 Starting Free Drawing Canvas Demo")
@@ -85,6 +85,11 @@ def main():
             except ValueError:
                 print("Invalid input, running quick demo instead...")
                 canvas.creative_session(num_iterations=3, output_dir=run_output_dir)
+            finally:
+                # Stop video capture
+                canvas.bridge.stop_video_capture()
+                #save the final canvas image to ../output/free_canvas/timestamp.png
+                canvas.bridge.capture_canvas(f"../output/free_canvas/{timestamp}.png")
 
         elif choice == "4":
             # Interactive demo
@@ -131,6 +136,8 @@ def main():
             finally:
                 # Stop video capture
                 canvas.bridge.stop_video_capture()
+                #save the final canvas image to ../output/free_canvas/timestamp.png
+                canvas.bridge.capture_canvas(f"../output/interactive/{timestamp}.png")
 
         elif choice == "5":
             # Mood-based demo
@@ -173,7 +180,8 @@ def main():
             finally:
                 # Stop video capture
                 canvas.bridge.stop_video_capture()
-
+                #save the final canvas image to ../output/free_canvas/timestamp.png
+                canvas.bridge.capture_canvas(f"../output/mood/{mood}_{timestamp}.png")
         elif choice == "6":
             # Abstract demo
             print("\n🎯 Running Abstract Demo...")

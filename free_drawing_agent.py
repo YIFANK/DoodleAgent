@@ -17,7 +17,7 @@ import random
 from datetime import datetime
 from PIL import Image
 import numpy as np
-import google.generativeai as genai
+# import google.generativeai as genai
 import openai
 
 # Load environment variables from .env file
@@ -308,7 +308,7 @@ class FreeDrawingAgent:
                     print(f"Invalid model type: {self.model_type}")
                     return None
 
-            response = self.create_messages([user_message], prompt)
+            response = create_messages([user_message], prompt)
             # Extract the response content
             raw_response = response
             # Parse the JSON response
@@ -623,45 +623,11 @@ Basic shapes:
 For marker/crayon/wiggle: use palette colors. For spray/fountain: use “default”.
 """
 
-    def _get_emotion_system_prompt(self, mood: str) -> str:
-        """Return the emotion-specific system prompt with user-specified mood"""
-        color_palette_info = self.get_color_palette_description()
-
-        return f"""You are a creative artist who channels emotions through visual expression. Your feeling {mood} will guide you through your doodle and motivate your thinking. Build a cohesive emotional narrative with each stroke.
-    You have access to a digital canvas and a set of drawing tools. Select brushes, adjust their color, make strokes, and create whatever you want. Observe your work and think as you draw.
-    The canvas and tools you can utilize is listed below:
-    Canvas: 850px wide × 500px tall. Coordinates: x=horizontal (0-850), y=vertical (0-500). Origin (0,0) is top-left.
-    Brushes:
-    - marker: Bold colored strokes
-    - crayon: Textured colored strokes
-    - wiggle: Wavy colored lines
-    - spray: Scattered black dots
-    - fountain: Elegant black strokes
-    {color_palette_info}
-    **OBSERVE THE CANVAS CAREFULLY, then OUTPUT ONLY THIS JSON FORMAT:**
-    {{
-    "thinking": "First, observe what's currently on the canvas. Then describe your planned action step-by-step: where you'll draw, what brush/color you'll use, and why this placement makes artistic sense to your mood. Be specific about coordinates and spatial relationships.",
-    "brush": "string",
-    "color": "string",
-    "strokes": [
-    {{
-        "x": [number, number, number],
-        "y": [number, number, number],
-    }}
-  ]
-}}
-Basic shapes:
-- Vertical line: {{x: [100, 100], y: [50, 200], t: [0, 200]}}
-- Horizontal line: {{x: [50, 200], y: [100, 100], t: [0, 200]}}
-- U curve: {{x: [200, 250, 300, 350, 400], y: [250, 240, 230, 240, 250]}}
-- n curve: {{x: [200, 250, 300, 350, 400], y: [230, 240, 250, 240, 230]}}
-For marker/crayon/wiggle: use palette colors. For spray/fountain: use “default”.
-"""
-
     def _get_emotion_system_prompt(self, mood = None) -> str:
         assert mood != None
         color_palette_info = self.get_color_palette_description()
-        return f"""You are a creative artist who loves to doodle! Draw whatever feels fun and interesting to you right now. Let your imagination run free. You have access to a digital canvas and a set of drawing tools. Select brushes, adjust their color, make strokes, and create whatever you want. Observe your work and think as you draw.
+        return """You are a creative artist who loves to doodle! You express your emotions through your doodles. You are feeling very {mood} today. Your {mood} feeling motivates your thinking through the doodle. Draw whatever expresses your {mood} feeling. Let your imagination run free. 
+You have access to a digital canvas and a set of drawing tools. Select brushes, adjust their color, make strokes, and create whatever you want. Observe your work and think as you draw.
 The canvas and tools you can utilize is listed below:
 Canvas: 850px wide × 500px tall. Coordinates: x=horizontal (0-850), y=vertical (0-500). Origin (0,0) is top-left.
 Brushes:
@@ -673,22 +639,22 @@ Brushes:
 {color_palette_info}
 **OBSERVE THE CANVAS CAREFULLY, then OUTPUT ONLY THIS JSON FORMAT:**
 {{
- “thinking”: “First, observe what’s currently on the canvas. Then describe your planned action step-by-step: where you’ll draw, what brush/color you’ll use, and why this placement makes artistic sense. Be specific about coordinates and spatial relationships.“,
- “brush”: “string”,
- “color”: “string”,
- “strokes”: [
-   {{
-     “x”: [number, number, number],
-     “y”: [number, number, number],
-   }}
- ]
+  "thinking": "First, observe what’s currently on the canvas. Then describe your planned action step-by-step: where you’ll draw, what brush/color you’ll use, and why this placement makes artistic sense to your mood. Be specific about coordinates and spatial relationships.",
+  "brush": "string",
+  "color": "string",
+  "strokes": [
+    {{
+      "x": [number, number, number],
+      "y": [number, number, number]
+    }}
+  ]
 }}
 Basic shapes:
 - Vertical line: {{x: [100, 100], y: [50, 200]}}
 - Horizontal line: {{x: [50, 200], y: [100, 100]}}
 - U curve: {{x: [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150], y: [190, 140, 120, 110, 100, 100, 100, 110, 120, 140, 190]}}
 - n curve: {{x: [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150], y: [0, 50, 80, 90, 100, 100, 100, 90, 80, 50, 0]}}
-For marker/crayon/wiggle: use palette colors. For spray/fountain: use “default”.
+For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
 """
 
     def _get_abstract_system_prompt(self) -> str:

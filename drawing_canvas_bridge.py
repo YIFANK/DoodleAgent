@@ -45,7 +45,6 @@ class DrawingCanvasBridge:
         self.temp_dir = "temp_frames"
         self.video_writer = None
         self.capture_thread = None
-
         # Current step info for overlays
         self.current_step_number = 0
         self.current_step_text = ""
@@ -331,34 +330,55 @@ class DrawingCanvasBridge:
                 print("Failed to set default pen brush")
 
     def set_brush_color(self, brush_type: str, color: str):
-        """Set the color for a specific brush type"""
+        """Set the color using the new color button system"""
         try:
-            # Map brush types to their color picker IDs
-            color_picker_map = {
-                "marker": "marker-color",
-                "crayon": "crayon-color",
-                "wiggle": "wiggle-color"
-            }
-
-            if brush_type not in color_picker_map:
-                print(f"Warning: Brush '{brush_type}' does not support color customization")
-                return
-
-            # Find the color picker element
-            color_picker_id = color_picker_map[brush_type]
-            color_picker = self.driver.find_element(By.ID, color_picker_id)
-
-            # Set the color value using JavaScript
-            self.driver.execute_script(f"document.getElementById('{color_picker_id}').value = '{color}';")
-
-            # Trigger the change event to update the brush color
-            self.driver.execute_script(f"document.getElementById('{color_picker_id}').dispatchEvent(new Event('change'));")
-
-            print(f"Set {brush_type} color to {color}")
+            # The new system uses global color swatches that work for all brush types
+            # First, try to find the color in existing palettes
+            color_found = False
+            
+            # Check if color exists in any of the dropdown palettes
+            palette_colors = self.driver.find_elements(By.CLASS_NAME, "palette-color")
+            for palette_color in palette_colors:
+                palette_bg_color = self.driver.execute_script(
+                    "return arguments[0].style.backgroundColor;", palette_color
+                )
+                # Convert color to hex if needed for comparison
+                if self._colors_match(palette_bg_color, color):
+                    palette_color.click()
+                    color_found = True
+                    print(f"Selected existing palette color {color} for {brush_type}")
+                    break
+            
+            # If color not found in palettes, set it on the first main color swatch
+            if not color_found:
+                # Use the selectColor function to set a custom color on color1
+                self.driver.execute_script(f"selectColor('{color}', 'color1');")
+                print(f"Set custom color {color} on main color swatch for {brush_type}")
+            
             time.sleep(0.2)  # Small delay for color to be applied
 
         except Exception as e:
             print(f"Error setting color for brush '{brush_type}': {e}")
+    
+    def _colors_match(self, color1: str, color2: str) -> bool:
+        """Helper method to compare colors in different formats"""
+        try:
+            # Convert both colors to hex format for comparison
+            def to_hex(color):
+                if color.startswith('#'):
+                    return color.upper()
+                elif color.startswith('rgb'):
+                    # Extract RGB values from rgb(r, g, b) format
+                    import re
+                    rgb_values = re.findall(r'\d+', color)
+                    if len(rgb_values) >= 3:
+                        r, g, b = int(rgb_values[0]), int(rgb_values[1]), int(rgb_values[2])
+                        return f"#{r:02X}{g:02X}{b:02X}"
+                return color.upper()
+            
+            return to_hex(color1) == to_hex(color2)
+        except:
+            return False
 
     def execute_stroke(self, stroke: dict,brush_type: str = "pen"):
         """Execute a single stroke on the canvas"""
@@ -512,8 +532,8 @@ class AutomatedDrawingCanvas:
     for automated creative drawing sessions.
     """
 
-    def __init__(self, api_key: str, canvas_url: str = None, enable_video_capture: bool = False, capture_fps: int = 30):
-        self.agent = FreeDrawingAgent(api_key=api_key)
+    def __init__(self, api_key: str, canvas_url: str = None, enable_video_capture: bool = False, capture_fps: int = 30,model_type: str = "claude"):
+        self.agent = FreeDrawingAgent(api_key=api_key,model_type=model_type)
         self.bridge = DrawingCanvasBridge(canvas_url=canvas_url, enable_video_capture=enable_video_capture, capture_fps=capture_fps)
         self.enable_video_capture = enable_video_capture
 
