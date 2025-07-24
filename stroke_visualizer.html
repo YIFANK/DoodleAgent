@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stroke Data Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            max-width: 1200px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #fd79a8);
+            border-radius: 20px 20px 0 0;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        .input-section {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .json-input {
+            width: 100%;
+            height: 120px;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        .json-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn.visualize {
+            background: linear-gradient(135deg, #00b894, #00cec9);
+        }
+
+        .btn.animate {
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+        }
+
+        .btn.clear {
+            background: linear-gradient(135deg, #ff6b6b, #ff7675);
+        }
+
+        .btn.save {
+            background: linear-gradient(135deg, #fdcb6e, #e17055);
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f8f9fa;
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+
+        .speed-slider {
+            width: 100px;
+        }
+
+        .canvas-wrapper {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
+            background: #fbf8f3;
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .info-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .info-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-card h3 {
+            color: #667eea;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .info-card p {
+            color: #666;
+            font-size: 0.8rem;
+            margin: 2px 0;
+        }
+
+        .stroke-list {
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+        }
+
+        .stroke-item {
+            padding: 4px 8px;
+            margin: 2px 0;
+            background: white;
+            border-radius: 5px;
+            border-left: 3px solid;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .error-message {
+            background: #ff6b6b;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .success-message {
+            background: #00b894;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">Stroke Data Visualizer</h1>
+            <p class="subtitle">Paste your JSON stroke data and visualize the drawing</p>
+        </div>
+
+        <div class="input-section">
+            <textarea
+                class="json-input"
+                id="jsonInput"
+                placeholder="Paste your JSON stroke data here...
+Example:
+{
+  &quot;strokes&quot;: [
+    {
+      &quot;brush&quot;: &quot;marker&quot;,
+      &quot;color&quot;: &quot;#ff6b6b&quot;,
+      &quot;stroke&quot;: {
+        &quot;x&quot;: [100, 120, 140],
+        &quot;y&quot;: [50, 75, 100]
+      }
+    }
+  ]
+}"></textarea>
+
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn visualize" onclick="visualizeStrokes()">🎨 Visualize All</button>
+            <button class="btn animate" onclick="animateStrokes()">▶️ Animate</button>
+            <button class="btn clear" onclick="clearCanvas()">🗑️ Clear</button>
+            <button class="btn save" onclick="saveCanvas()">💾 Save</button>
+
+            <div class="speed-control">
+                <span>Speed:</span>
+                <input type="range" class="speed-slider" id="speedSlider" min="1" max="100" value="50">
+                <span id="speedValue">50</span>
+            </div>
+        </div>
+
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <div id="p5-canvas"></div>
+        </div>
+
+        <div class="info-panel" id="infoPanel" style="display: none;">
+            <div class="info-card">
+                <h3>Drawing Info</h3>
+                <p>Total Strokes: <span id="totalStrokes">0</span></p>
+                <p>Canvas Size: <span id="canvasSize">-</span></p>
+                <p>Timestamp: <span id="timestamp">-</span></p>
+            </div>
+
+            <div class="info-card">
+                <h3>Brush Types</h3>
+                <div id="brushTypes"></div>
+            </div>
+
+            <div class="info-card">
+                <h3>Stroke List</h3>
+                <div class="stroke-list" id="strokeList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let strokeData = null;
+        let isAnimating = false;
+        let animationIndex = 0;
+        let wiggle_flip = 0;
+
+        // Speed control
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+        speedSlider.addEventListener('input', (e) => {
+            speedValue.textContent = e.target.value;
+        });
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        function parseJSON() {
+            const input = document.getElementById('jsonInput').value.trim();
+            if (!input) {
+                showError('Please paste some JSON data first!');
+                return null;
+            }
+
+            try {
+                const data = JSON.parse(input);
+                if (!data.strokes || !Array.isArray(data.strokes)) {
+                    showError('Invalid JSON format. Expected "strokes" array.');
+                    return null;
+                }
+                return data;
+            } catch (e) {
+                showError('Invalid JSON format: ' + e.message);
+                return null;
+            }
+        }
+
+        function updateInfoPanel(data) {
+            document.getElementById('infoPanel').style.display = 'grid';
+            document.getElementById('totalStrokes').textContent = data.strokes.length;
+
+            if (data.metadata) {
+                document.getElementById('canvasSize').textContent =
+                    `${data.metadata.canvasSize?.width || '?'} × ${data.metadata.canvasSize?.height || '?'}`;
+                document.getElementById('timestamp').textContent =
+                    data.metadata.timestamp ? new Date(data.metadata.timestamp).toLocaleString() : '-';
+            }
+
+            // Brush types
+            const brushTypes = {};
+            data.strokes.forEach(stroke => {
+                brushTypes[stroke.brush] = (brushTypes[stroke.brush] || 0) + 1;
+            });
+
+            const brushTypesDiv = document.getElementById('brushTypes');
+            brushTypesDiv.innerHTML = '';
+            Object.entries(brushTypes).forEach(([brush, count]) => {
+                const p = document.createElement('p');
+                p.textContent = `${brush}: ${count}`;
+                brushTypesDiv.appendChild(p);
+            });
+
+            // Stroke list
+            const strokeListDiv = document.getElementById('strokeList');
+            strokeListDiv.innerHTML = '';
+            data.strokes.forEach((stroke, i) => {
+                const div = document.createElement('div');
+                div.className = 'stroke-item';
+                div.style.borderLeftColor = stroke.color || '#666';
+                div.innerHTML = `
+                    <span>${i + 1}. ${stroke.brush}</span>
+                    <span>${stroke.stroke.x.length} pts</span>
+                `;
+                strokeListDiv.appendChild(div);
+            });
+        }
+
+        function visualizeStrokes() {
+            strokeData = parseJSON();
+            if (!strokeData) return;
+
+            clear();
+            background('#fbf8f3');
+
+            strokeData.strokes.forEach(stroke => {
+                drawStroke(stroke);
+            });
+
+            updateInfoPanel(strokeData);
+            showSuccess(`Visualized ${strokeData.strokes.length} strokes!`);
+        }
+
+        function animateStrokes() {
+            strokeData = parseJSON();
+            if (!strokeData) return;
+
+            if (isAnimating) {
+                isAnimating = false;
+                return;
+            }
+
+            clear();
+            background('#fbf8f3');
+            isAnimating = true;
+            animationIndex = 0;
+
+            updateInfoPanel(strokeData);
+            animateNextStroke();
+        }
+
+        function animateNextStroke() {
+            if (!isAnimating || animationIndex >= strokeData.strokes.length) {
+                isAnimating = false;
+                showSuccess('Animation complete!');
+                return;
+            }
+
+            const stroke = strokeData.strokes[animationIndex];
+            drawStroke(stroke);
+
+            // Highlight current stroke in list
+            const strokeItems = document.querySelectorAll('.stroke-item');
+            strokeItems.forEach((item, i) => {
+                item.style.background = i === animationIndex ? '#e3f2fd' : 'white';
+            });
+
+            animationIndex++;
+
+            const speed = parseInt(speedSlider.value);
+            const delay = 2000 - (speed * 18); // Convert to delay (faster = less delay)
+            setTimeout(animateNextStroke, Math.max(50, delay));
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 0, g: 0, b: 0 };
+        }
+
+        function drawStroke(strokeData) {
+            const xCoords = strokeData.stroke.x;
+            const yCoords = strokeData.stroke.y;
+            const brush = strokeData.brush;
+            const color = strokeData.color || '#000000';
+
+            // Set up for drawing
+            const colorRgb = hexToRgb(color);
+
+            for (let i = 1; i < xCoords.length; i++) {
+                const x = xCoords[i];
+                const y = yCoords[i];
+                const prevX = xCoords[i - 1];
+                const prevY = yCoords[i - 1];
+
+                // Simulate the brush by calling the appropriate function
+                drawBrushStroke(brush, x, y, prevX, prevY, colorRgb);
+            }
+        }
+
+        function drawBrushStroke(brush, x, y, prevX, prevY, colorRgb) {
+            switch (brush) {
+                case 'marker':
+                    fill(colorRgb.r, colorRgb.g, colorRgb.b, 40);
+                    noStroke();
+                    circle(x, y, 50);
+                    break;
+
+                case 'crayon':
+                    drawCrayonStroke(x, y, prevX, prevY, colorRgb);
+                    break;
+
+                case 'wiggle':
+                    drawWiggleStroke(x, y, prevX, prevY, colorRgb);
+                    break;
+
+                case 'spray':
+                    drawSprayStroke(x, y, prevX, prevY);
+                    break;
+
+                case 'fountain':
+                    drawFountainStroke(x, y, prevX, prevY);
+                    break;
+
+                default:
+                    // Default to simple line
+                    stroke(colorRgb.r, colorRgb.g, colorRgb.b);
+                    strokeWeight(3);
+                    line(prevX, prevY, x, y);
+            }
+        }
+
+        function drawCrayonStroke(x, y, prevX, prevY, colorRgb) {
+            fill(colorRgb.r, colorRgb.g, colorRgb.b, 200);
+            noStroke();
+
+            const distance = dist(x, y, prevX, prevY);
+            const steps = Math.max(1, Math.floor(distance / 3));
+
+            for (let i = 0; i <= steps; i++) {
+                const lerpX = lerp(prevX, x, i / steps);
+                const lerpY = lerp(prevY, y, i / steps);
+
+                circle(lerpX, lerpY, 12);
+
+                for (let j = 0; j < 8; j++) {
+                    const textureX = lerpX + random(-10, 10);
+                    const textureY = lerpY + random(-10, 10);
+                    fill(colorRgb.r, colorRgb.g, colorRgb.b, 100);
+                    circle(textureX, textureY, 6);
+                }
+
+                for (let k = 0; k < 4; k++) {
+                    const textureX2 = lerpX + random(-15, 15);
+                    const textureY2 = lerpY + random(-15, 15);
+                    fill(colorRgb.r, colorRgb.g, colorRgb.b, 50);
+                    circle(textureX2, textureY2, 3);
+                }
+            }
+        }
+
+        function drawWiggleStroke(x, y, prevX, prevY, colorRgb) {
+            stroke(colorRgb.r, colorRgb.g, colorRgb.b, 255);
+            strokeWeight(3);
+            noFill();
+
+            const distance = dist(x, y, prevX, prevY);
+            const midX = (x + prevX) / 2;
+            const midY = (y + prevY) / 2;
+
+            const angle = Math.atan2(y - prevY, x - prevX);
+            const flip = wiggle_flip * PI;
+            wiggle_flip = 1 - wiggle_flip;
+
+            arc(midX, midY, distance, distance, angle + flip, angle + PI + flip);
+        }
+
+        function drawSprayStroke(x, y, prevX, prevY) {
+            if (x === prevX && y === prevY) return;
+
+            stroke(0, 0, 0, 180);
+            strokeWeight(1);
+
+            const speed = abs(x - prevX) + abs(y - prevY);
+            const minRadius = 8;
+            const sprayDensity = 40;
+            const r = speed + minRadius;
+            const rSquared = r * r;
+            const lerps = 6;
+
+            for (let i = 0; i < lerps; i++) {
+                const lerpX = lerp(x, prevX, i / lerps);
+                const lerpY = lerp(y, prevY, i / lerps);
+
+                for (let j = 0; j < sprayDensity; j++) {
+                    const randX = random(-r, r);
+                    const randY = random(-1, 1) * sqrt(rSquared - randX * randX);
+                    point(lerpX + randX, lerpY + randY);
+                }
+            }
+        }
+
+        function drawFountainStroke(x, y, prevX, prevY) {
+            stroke(0, 0, 0, 255);
+            strokeWeight(1);
+            const penWidth = 4;
+            const lerps = 12;
+
+            for (let i = 0; i < lerps; i++) {
+                const lerpX = lerp(x, prevX, i / lerps);
+                const lerpY = lerp(y, prevY, i / lerps);
+                line(lerpX - penWidth, lerpY - penWidth, lerpX + penWidth, lerpY + penWidth);
+            }
+        }
+
+        function clearCanvas() {
+            clear();
+            background('#fbf8f3');
+            isAnimating = false;
+            document.getElementById('infoPanel').style.display = 'none';
+        }
+
+        function saveCanvas() {
+            const now = new Date();
+            const timestamp = now.getFullYear() +
+                            String(now.getMonth() + 1).padStart(2, '0') +
+                            String(now.getDate()).padStart(2, '0') + '_' +
+                            String(now.getHours()).padStart(2, '0') +
+                            String(now.getMinutes()).padStart(2, '0') +
+                            String(now.getSeconds()).padStart(2, '0');
+
+            const filename = `stroke_visualization_${timestamp}`;
+            save(filename + '.png');
+            showSuccess('Image saved!');
+        }
+
+        function setup() {
+            let canvas = createCanvas(850, 500);
+            canvas.parent('p5-canvas');
+            background('#fbf8f3');
+            strokeCap(ROUND);
+        }
+
+        function draw() {
+            // Animation loop handled by animateNextStroke()
+        }
+
+        // Auto-fill with sample data for testing
+        window.addEventListener('load', () => {
+            const sampleData = `{
+  "strokes": [
+    {
+      "brush": "marker",
+      "color": "#ff6b6b",
+      "stroke": {
+        "x": [100, 120, 140, 160, 180],
+        "y": [100, 80, 60, 80, 100]
+      }
+    },
+    {
+      "brush": "crayon",
+      "color": "#4ecdc4",
+      "stroke": {
+        "x": [200, 220, 240, 260],
+        "y": [150, 130, 110, 90]
+      }
+    }
+  ],
+  "metadata": {
+    "totalStrokes": 2,
+    "canvasSize": {
+      "width": 850,
+      "height": 500
+    },
+    "timestamp": "${new Date().toISOString()}"
+  }
+}`;
+            // Uncomment the next line to auto-fill sample data
+            // document.getElementById('jsonInput').value = sampleData;
+        });
+    </script>
+</body>
+</html>
