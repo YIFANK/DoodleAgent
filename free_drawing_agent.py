@@ -643,7 +643,7 @@ Brushes:
 {{
  “thinking”: “First, observe what’s currently on the canvas. Then describe your planned action step-by-step: where you’ll draw, what brush/color you’ll use, and why this placement makes artistic sense. Be specific about coordinates and spatial relationships.“,
  “brush”: “string”,
- “color”: “string”,
+ “color”: “string in hexcode format ONLY like #000000”,
  “strokes”: [
    {{
      “x”: [number, number, number],
@@ -662,7 +662,7 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use “default
     def _get_emotion_system_prompt(self, mood = None) -> str:
         assert mood != None
         color_palette_info = self.get_color_palette_description()
-        return """You are a creative artist who loves to doodle! You express your emotions through your doodles. You are feeling very {mood} today. Your {mood} feeling motivates your thinking through the doodle. Draw whatever expresses your {mood} feeling. Let your imagination run free. 
+        return f"""You are a creative artist who loves to doodle! You express your emotions through your doodles. You are feeling very {mood} today. Your {mood} feeling motivates your thinking through the doodle. Draw whatever expresses your {mood} feeling. Let your imagination run free. 
 You have access to a digital canvas and a set of drawing tools. Select brushes, adjust their color, make strokes, and create whatever you want. Observe your work and think as you draw.
 The canvas and tools you can utilize is listed below:
 Canvas: 850px wide × 500px tall. Coordinates: x=horizontal (0-850), y=vertical (0-500). Origin (0,0) is top-left.
@@ -881,17 +881,72 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                 return json.loads(json_str)
             except json.JSONDecodeError as e:
                 print(f"JSON parsing error: {e}")
+                
+                # Enhanced debugging: Show the problematic characters
+                self._debug_json_chars(json_str, e)
 
-                # Method 3: Try to fix common JSON issues
+                # Method 3: Clean and normalize the JSON string
                 try:
-                    json_str = json_str.rstrip(', \n\r\t')
-                    if not json_str.endswith('}'):
-                        json_str += '}'
-                    return json.loads(json_str)
-                except json.JSONDecodeError:
+                    # Remove potential problematic characters and normalize whitespace
+                    cleaned_json = self._clean_json_string(json_str)
+                    return json.loads(cleaned_json)
+                except json.JSONDecodeError as e2:
+                    print(f"Cleaned JSON also failed: {e2}")
                     pass
 
         return None
+    
+    def _debug_json_chars(self, json_str: str, error: Exception):
+        """Debug function to show problematic characters in JSON"""
+        lines = json_str.split('\n')
+        print(f"🔍 JSON Debug Info:")
+        print(f"Total length: {len(json_str)}")
+        print(f"Error: {error}")
+        
+        # Show first few lines with character codes
+        for i, line in enumerate(lines[:5]):  # First 5 lines
+            print(f"Line {i+1}: '{line}'")
+            if i == 1:  # Line 2 where the error occurs
+                print(f"  Character codes: {[ord(c) for c in line[:10]]}")
+                print(f"  Hex representation: {line[:10].encode('unicode_escape').decode('ascii')}")
+        
+        # Check for specific problematic characters
+        problematic_chars = []
+        for i, char in enumerate(json_str[:50]):  # First 50 chars
+            code = ord(char)
+            if code > 127 or (code < 32 and code not in [9, 10, 13]):  # Non-ASCII or control chars (except tab, LF, CR)
+                problematic_chars.append((i, char, code, hex(code)))
+        
+        if problematic_chars:
+            print(f"🚨 Found {len(problematic_chars)} problematic characters:")
+            for pos, char, code, hex_code in problematic_chars:
+                print(f"  Position {pos}: '{char}' (code: {code}, hex: {hex_code})")
+    
+    def _clean_json_string(self, json_str: str) -> str:
+        """Clean and normalize JSON string to fix common parsing issues"""
+        import re
+        
+        # Step 1: Normalize unicode and remove problematic characters
+        # Replace various types of spaces with regular spaces
+        json_str = re.sub(r'[\u00A0\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]', ' ', json_str)
+        
+        # Step 2: Normalize line endings
+        json_str = json_str.replace('\r\n', '\n').replace('\r', '\n')
+        
+        # Step 3: Remove or replace control characters (except necessary ones)
+        json_str = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', json_str)
+        
+        # Step 4: Normalize quotes (replace smart quotes with regular quotes)
+        json_str = json_str.replace('"', '"').replace('"', '"').replace(''', "'").replace(''', "'")
+        
+        # Step 5: Normalize whitespace within the JSON structure
+        # This is more conservative - only normalize spacing around structural elements
+        json_str = re.sub(r'\s*{\s*', '{\n  ', json_str)  # Opening braces
+        json_str = re.sub(r'\s*}\s*', '\n}', json_str)    # Closing braces
+        json_str = re.sub(r'\s*:\s*', ': ', json_str)     # Colons
+        json_str = re.sub(r'\s*,\s*', ',\n  ', json_str)  # Commas
+        
+        return json_str
 
     def _validate_and_sanitize(self, data: Dict) -> Dict:
         """Validate and sanitize the drawing instruction data"""
@@ -1101,6 +1156,7 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
         If the color is not in the palette, return a default color.
         """
         if not isinstance(color, str):
+            print(f"Invalid color: {color}")
             return "#6BB9A4"  # Default keppel
 
         # Check if it's a valid hex color
@@ -1111,6 +1167,7 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                     return color
 
         # If not found in palette, return default keppel
+        print(f"Color not found in palette: {color}")
         return "#6BB9A4"
 
     def select_color_from_palette(self, brush_type: str, context: str = "") -> str:

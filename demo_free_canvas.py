@@ -143,6 +143,8 @@ def main():
                 # Save final interactive artwork
                 canvas.bridge.capture_canvas(f"{run_output_dir}/interactive_final.png")
                 print(f"\n🎉 Interactive session completed!")
+                os.makedirs(f"../output/interactive", exist_ok=True)
+                canvas.bridge.capture_canvas(f"../output/interactive/{timestamp}.png")
                 print(f"Final artwork saved as: {run_output_dir}/interactive_final.png")
                 print(f"🎬 Video saved as: {video_output}")
                 
@@ -150,9 +152,6 @@ def main():
                 # Stop video capture
                 canvas.bridge.stop_video_capture()
                 #save the final canvas image to ../output/free_canvas/timestamp.png
-                #create a folder for the interactive session
-                os.makedirs(f"../output/interactive/{timestamp}", exist_ok=True)
-                canvas.bridge.capture_canvas(f"../output/interactive/{timestamp}/{timestamp}.png")
 
         elif choice == "5":
             # Mood-based demo
@@ -190,6 +189,8 @@ def main():
                 canvas.bridge.capture_canvas(f"{run_output_dir}/mood_{mood}.png")
                 print(f"\n🎉 Mood-based session completed!")
                 print(f"Final artwork saved as: {run_output_dir}/mood_{mood}.png")
+                os.makedirs(f"../output/mood/{mood}", exist_ok=True)
+                canvas.bridge.capture_canvas(f"../output/mood/{mood}/{timestamp}.png")
                 print(f"🎬 Video saved as: {video_output}")
                 
             finally:
@@ -197,8 +198,7 @@ def main():
                 canvas.bridge.stop_video_capture()
                 #save the final canvas image to ../output/free_canvas/timestamp.png
                 #create a folder for the mood-based session
-                os.makedirs(f"../output/mood/{mood}_{timestamp}", exist_ok=True)
-                canvas.bridge.capture_canvas(f"../output/mood/{mood}_{timestamp}/{mood}_{timestamp}.png")
+
         elif choice == "6":
             # Abstract demo
             print("\n🎯 Running Abstract Demo...")
