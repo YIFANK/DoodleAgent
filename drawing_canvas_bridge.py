@@ -565,8 +565,8 @@ class AutomatedDrawingCanvas:
             random_emotion = self.agent._get_random_mood()
             print(f"Random emotion: {random_emotion}")
             emotion = random_emotion
-        instruction = self.agent.create_drawing_instruction(
-            canvas_filename, emotion
+        instruction = self.agent.create_emotion_drawing_instruction(
+            canvas_image_path=canvas_filename, emotion=emotion
         )
 
         # Execute the instruction

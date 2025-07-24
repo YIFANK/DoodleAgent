@@ -217,7 +217,7 @@ class FreeDrawingAgent:
         except Exception as e:
             print(f"Warning: Failed to append to log files: {e}")
 
-    def create_drawing_instruction(self, canvas_image_path: str, user_question: str = "What would you like to draw next?",with_context: bool = False) -> DrawingInstruction:
+    def create_drawing_instruction(self, canvas_image_path: str, user_question: str = "What would you like to draw next?",with_context: bool = True, mood: str = None) -> DrawingInstruction:
         """
         Analyze the current canvas and decide what to draw next.
 
@@ -267,12 +267,15 @@ class FreeDrawingAgent:
 
         try:
             # Create the response using Anthropic client
+            prompt = self._get_system_prompt()
+            if mood is not None:
+                prompt = self._get_emotion_system_prompt(mood)
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=6000,
                 temperature=1,
                 messages=[user_message],
-                system=self._get_system_prompt()
+                system=prompt
             )
             # Extract the response content
             raw_response = response.content[0].text
@@ -417,7 +420,7 @@ class FreeDrawingAgent:
         user_question = f"Express the emotion or mood of '{emotion}' in your next drawing strokes. What would you like to draw next?"
 
         # Use base create_drawing_instruction with emotion context
-        return self.create_drawing_instruction(canvas_image_path, user_question)
+        return self.create_drawing_instruction(canvas_image_path, user_question,mood=emotion)
 
     def create_abstract_drawing_instruction(self, canvas_image_path: str) -> DrawingInstruction:
         """
@@ -587,8 +590,38 @@ Basic shapes:
 For marker/crayon/wiggle: use palette colors. For spray/fountain: use “default”.
 """
 
-    def _get_emotion_system_prompt(self) -> str:
-        return self._get_system_prompt()
+    def _get_emotion_system_prompt(self, mood = None) -> str:
+        assert mood != None
+        color_palette_info = self.get_color_palette_description()
+        return f"""You are a creative artist who loves to doodle! Draw whatever feels fun and interesting to you right now. Let your imagination run free. You have access to a digital canvas and a set of drawing tools. Select brushes, adjust their color, make strokes, and create whatever you want. Observe your work and think as you draw.
+The canvas and tools you can utilize is listed below:
+Canvas: 850px wide × 500px tall. Coordinates: x=horizontal (0-850), y=vertical (0-500). Origin (0,0) is top-left.
+Brushes:
+- marker: Bold colored strokes
+- crayon: Textured colored strokes
+- wiggle: Wavy colored lines
+- spray: Scattered black dots
+- fountain: Elegant black strokes
+{color_palette_info}
+**OBSERVE THE CANVAS CAREFULLY, then OUTPUT ONLY THIS JSON FORMAT:**
+{{
+ “thinking”: “First, observe what’s currently on the canvas. Then describe your planned action step-by-step: where you’ll draw, what brush/color you’ll use, and why this placement makes artistic sense. Be specific about coordinates and spatial relationships.“,
+ “brush”: “string”,
+ “color”: “string”,
+ “strokes”: [
+   {{
+     “x”: [number, number, number],
+     “y”: [number, number, number],
+   }}
+ ]
+}}
+Basic shapes:
+- Vertical line: {{x: [100, 100], y: [50, 200]}}
+- Horizontal line: {{x: [50, 200], y: [100, 100]}}
+- U curve: {{x: [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150], y: [190, 140, 120, 110, 100, 100, 100, 110, 120, 140, 190]}}
+- n curve: {{x: [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150], y: [0, 50, 80, 90, 100, 100, 100, 90, 80, 50, 0]}}
+For marker/crayon/wiggle: use palette colors. For spray/fountain: use “default”.
+"""
 
     def _get_abstract_system_prompt(self) -> str:
         return self._get_system_prompt()
