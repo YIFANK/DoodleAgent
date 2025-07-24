@@ -306,12 +306,14 @@
             opacity: 0;
         }
 
-        .clear-btn {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: #ff6b6b;
-            color: white;
+        .canvas-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .clear-btn, .save-btn, .extract-btn {
             border: none;
             border-radius: 20px;
             padding: 8px 16px;
@@ -319,6 +321,11 @@
             cursor: pointer;
             transition: all 0.3s ease;
             font-size: 0.8rem;
+            color: white;
+        }
+
+        .clear-btn {
+            background: #ff6b6b;
             box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
         }
 
@@ -329,18 +336,7 @@
         }
 
         .save-btn {
-            position: absolute;
-            top: 15px;
-            right: 90px;
             background: #00b894;
-            color: white;
-            border: none;
-            border-radius: 20px;
-            padding: 8px 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.8rem;
             box-shadow: 0 4px 15px rgba(0, 184, 148, 0.3);
         }
 
@@ -348,6 +344,17 @@
             background: #00a085;
             transform: translateY(-1px);
             box-shadow: 0 6px 20px rgba(0, 184, 148, 0.4);
+        }
+
+        .extract-btn {
+            background: #4834d4;
+            box-shadow: 0 4px 15px rgba(72, 52, 212, 0.3);
+        }
+
+        .extract-btn:hover {
+            background: #3c2db0;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(72, 52, 212, 0.4);
         }
 
         .instructions {
@@ -481,9 +488,13 @@
             </div>
         </div>
 
-        <div class="canvas-wrapper" id="canvasWrapper">
+        <div class="canvas-actions">
             <button class="clear-btn" onclick="clearCanvas()">🗑️ Clear</button>
             <button class="save-btn" onclick="saveCanvas()">💾 Save</button>
+            <button class="extract-btn" onclick="extractStrokes()">🔍 Extract</button>
+        </div>
+
+        <div class="canvas-wrapper" id="canvasWrapper">
             <div id="p5-canvas"></div>
         </div>
 
@@ -497,7 +508,8 @@
         let hasDrawn = false;
         let currentColor = '#6BB9A4';
         let activeDropdown = null;
-
+        let strokes = [];
+        let currentStroke = [];
         // Spray brush fix variables
         let sprayStartX = 0;
         let sprayStartY = 0;
@@ -602,6 +614,41 @@
             save(filename + '.png');
         }
 
+        function extractStrokes() {
+            console.log('Extracting strokes...', strokes);
+            // Convert strokes to the expected format
+            let processedStrokes = [];
+            
+            for (let stroke of strokes) {
+                if (stroke.points && stroke.points.length > 0) {
+                    // Extract x and y coordinates from points
+                    let xCoords = stroke.points.map(point => point.x);
+                    let yCoords = stroke.points.map(point => point.y);
+                    
+                    processedStrokes.push({
+                        brush: stroke.brush,
+                        color: stroke.color,
+                        stroke: {
+                            x: xCoords,
+                            y: yCoords
+                        }
+                    });
+                }
+            }
+
+            const strokeData = {
+                strokes: processedStrokes,
+                metadata: {
+                    totalStrokes: processedStrokes.length,
+                    canvasSize: { width: width, height: height },
+                    timestamp: new Date().toISOString()
+                }
+            };
+
+            saveJSON(strokeData, 'strokes.json');
+            console.log('Strokes saved:', strokeData);
+        }
+
         function setup() {
             let canvas = createCanvas(850, 500);
             canvas.parent('p5-canvas');
@@ -613,21 +660,41 @@
         }
 
         function mousePressed() {
-            // Reset spray tracking when mouse is pressed
-            if (currentBrush === 'spray') {
-                sprayStartX = mouseX;
-                sprayStartY = mouseY;
-                hasSprayMoved = false;
-            }
-        }
+            // Start a new stroke when mouse is pressed
+            if (mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
+                currentStroke = [];
+                currentStroke.push({
+                    x: mouseX,
+                    y: mouseY,
+                    color: currentColor,
+                    brush: currentBrush
+                });
 
-        function draw() {
-            if (mouseIsPressed && mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
+                // Reset spray tracking when mouse is pressed
+                if (currentBrush === 'spray') {
+                    sprayStartX = mouseX;
+                    sprayStartY = mouseY;
+                    hasSprayMoved = false;
+                }
+
                 if (!hasDrawn) {
                     hasDrawn = true;
                     document.getElementById('canvasWrapper').classList.add('drawing');
                 }
+            }
+        }
 
+        function mouseDragged() {
+            // Continue the current stroke when mouse is dragged
+            if (mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
+                currentStroke.push({
+                    x: mouseX,
+                    y: mouseY,
+                    color: currentColor,
+                    brush: currentBrush
+                });
+
+                // Draw based on current brush
                 switch(currentBrush) {
                     case 'marker':
                         marker();
@@ -646,6 +713,24 @@
                         break;
                 }
             }
+        }
+
+        function mouseReleased() {
+            // Finalize the stroke when mouse is released
+            if (currentStroke.length > 0) {
+                strokes.push({
+                    brush: currentBrush,
+                    color: currentColor,
+                    points: currentStroke
+                });
+                console.log('Stroke completed:', strokes[strokes.length - 1]);
+            }
+            currentStroke = [];
+        }
+
+        function draw() {
+            // The draw function is now mainly for continuous drawing effects if needed
+            // Most drawing logic has been moved to mouseDragged()
         }
 
         function marker() {

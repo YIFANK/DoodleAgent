@@ -17,8 +17,10 @@ load_dotenv()
 
 def main():
     # Check if API key is provided
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
+    claude_api_key = os.getenv("ANTHROPIC_API_KEY")
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
+    if not claude_api_key:
         print("Error: Please set the ANTHROPIC_API_KEY in your .env file")
         print("Create a .env file with: ANTHROPIC_API_KEY=your-api-key-here")
         sys.exit(1)
@@ -28,7 +30,7 @@ def main():
     canvas_url = f"file://{current_dir}/drawing_canvas.html"
 
     # Initialize the automated drawing canvas with video capture enabled
-    canvas = AutomatedDrawingCanvas(api_key=api_key, canvas_url=canvas_url, enable_video_capture=True, capture_fps=30)
+    canvas = AutomatedDrawingCanvas(api_key=openai_api_key, canvas_url=canvas_url, enable_video_capture=True, capture_fps=30)
 
     try:
         print("🎨 Starting Free Drawing Canvas Demo")

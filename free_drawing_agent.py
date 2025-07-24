@@ -17,7 +17,8 @@ import random
 from datetime import datetime
 from PIL import Image
 import numpy as np
-
+import google.generativeai as genai
+import openai
 
 # Load environment variables from .env file
 load_dotenv()
@@ -36,12 +37,17 @@ class FreeDrawingAgent:
     and generates creative drawing instructions for drawing_canvas.html
     """
 
-    def __init__(self, api_key: str, model: str = "claude-3-5-sonnet-20241022", enable_logging: bool = True):
+    def __init__(self, api_key: str, model: str = "claude-3-5-sonnet-20241022", enable_logging: bool = True,model_type: str = "claude"):
         self.api_key = api_key
         self.model = model
-        self.client = anthropic.Anthropic(api_key=api_key)
+        self.model_type = model_type
+        if model_type == "claude":
+            self.client = anthropic.Anthropic(api_key=api_key)
+        elif model_type == "gemini":
+            self.client = google.generativeai.Client(api_key=api_key)
+        elif model_type == "openai":
+            self.client = openai.OpenAI(api_key=api_key)
         self.enable_logging = enable_logging
-
         # Brush tracking for variety
         self.recent_brushes = []
         self.max_brush_history = 5
@@ -270,15 +276,41 @@ class FreeDrawingAgent:
             prompt = self._get_system_prompt()
             if mood is not None:
                 prompt = self._get_emotion_system_prompt(mood)
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=6000,
-                temperature=1,
-                messages=[user_message],
-                system=prompt
-            )
+            def create_messages(messages, system_prompt):
+                if self.model_type == "claude":
+                    response = self.client.messages.create(
+                        model=self.model,
+                        max_tokens=6000,
+                        temperature=1,
+                        messages=messages,
+                        system=system_prompt
+                    )
+                    return response.content[0].text
+                elif self.model_type == "gemini":
+                    response = self.client.generate_content(
+                        messages[0]["content"],
+                        generation_config=genai.types.GenerationConfig(
+                            temperature=1.0
+                        )
+                    )
+                    return response.text
+                elif self.model_type == "openai":
+                    response = self.client.chat.completions.create(
+                        model=self.model,
+                        temperature=1,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            *messages
+                        ]
+                    )
+                    return response.choices[0].message.content
+                else:
+                    print(f"Invalid model type: {self.model_type}")
+                    return None
+
+            response = self.create_messages([user_message], prompt)
             # Extract the response content
-            raw_response = response.content[0].text
+            raw_response = response
             # Parse the JSON response
             action_data = self._parse_json_response(raw_response)
 
