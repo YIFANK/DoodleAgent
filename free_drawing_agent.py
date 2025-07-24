@@ -37,16 +37,20 @@ class FreeDrawingAgent:
     and generates creative drawing instructions for drawing_canvas.html
     """
 
-    def __init__(self, api_key: str, model: str = "claude-3-5-sonnet-20241022", enable_logging: bool = True,model_type: str = "claude"):
+    def __init__(self, api_key: str, enable_logging: bool = True,model_type: str = "claude",verbose: bool = False):
         self.api_key = api_key
-        self.model = model
         self.model_type = model_type
+        self.verbose = verbose
         if model_type == "claude":
             self.client = anthropic.Anthropic(api_key=api_key)
+            self.model = "claude-3-5-sonnet-20241022"
         elif model_type == "gemini":
             self.client = google.generativeai.Client(api_key=api_key)
+            self.model = "gemini-2.5-flash"
         elif model_type == "openai":
             self.client = openai.OpenAI(api_key=api_key)
+            openai.api_key = api_key
+            self.model = "gpt-4o"
         self.enable_logging = enable_logging
         # Brush tracking for variety
         self.recent_brushes = []
@@ -223,6 +227,84 @@ class FreeDrawingAgent:
         except Exception as e:
             print(f"Warning: Failed to append to log files: {e}")
 
+    def create_messages_gemini(self,canvas_image_path, user_text, system_prompt):
+        response = self.client.generate_content(
+            user_text,
+            generation_config=genai.types.GenerationConfig(
+                temperature=1.0
+            )
+        )
+        return response.text
+
+    def create_messages_openai(self,canvas_image_path, user_text, system_prompt):
+        # Encode the image
+        image_base64 = self.encode_image(canvas_image_path)
+        image_message = {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{image_base64}"
+                    }
+                }
+            ]
+        }
+        
+        # Build the full message list
+        full_messages = [
+            {"role": "system", "content": system_prompt},
+            image_message,
+            {"role": "user", "content": user_text}
+        ]
+
+        # Make the API call
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=full_messages
+        )
+
+        return response.choices[0].message.content
+
+
+    def create_messages_claude(self,canvas_image_path, user_text, system_prompt):
+        user_message = {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": self._get_image_media_type(canvas_image_path),
+                        "data": self.encode_image(canvas_image_path)
+                    }
+                },
+                {
+                    "type": "text",
+                    "text": user_text
+                }
+            ]
+        }
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=6000,
+            temperature=1,
+            messages=[user_message],
+            system=system_prompt
+        )
+        return response.content[0].text
+
+    def create_messages(self,canvas_image_path, messages, system_prompt):
+        if self.model_type == "claude":
+            return self.create_messages_claude(canvas_image_path, messages, system_prompt)
+        elif self.model_type == "gemini":
+            return self.create_messages_gemini(canvas_image_path, messages, system_prompt)
+        elif self.model_type == "openai":
+            return self.create_messages_openai(canvas_image_path, messages, system_prompt)
+        else:
+            print(f"Invalid model type: {self.model_type}")
+            return None
+
     def create_drawing_instruction(self, canvas_image_path: str, user_question: str = "What would you like to draw next?",with_context: bool = True, mood: str = None) -> DrawingInstruction:
         """
         Analyze the current canvas and decide what to draw next.
@@ -248,23 +330,6 @@ class FreeDrawingAgent:
                 user_text = stroke_context
         user_text += f"\n\n{user_question} Output your drawing instruction in the required JSON format."
         # print("user_text",user_text)
-        user_message = {
-            "role": "user",
-            "content": [
-                {
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": self._get_image_media_type(canvas_image_path),
-                        "data": image_data
-                    }
-                },
-                {
-                    "type": "text",
-                    "text": user_text
-                }
-            ]
-        }
 
         raw_response = ""
         parsed_instruction = None
@@ -276,41 +341,12 @@ class FreeDrawingAgent:
             prompt = self._get_system_prompt()
             if mood is not None:
                 prompt = self._get_emotion_system_prompt(mood)
-            def create_messages(messages, system_prompt):
-                if self.model_type == "claude":
-                    response = self.client.messages.create(
-                        model=self.model,
-                        max_tokens=6000,
-                        temperature=1,
-                        messages=messages,
-                        system=system_prompt
-                    )
-                    return response.content[0].text
-                elif self.model_type == "gemini":
-                    response = self.client.generate_content(
-                        messages[0]["content"],
-                        generation_config=genai.types.GenerationConfig(
-                            temperature=1.0
-                        )
-                    )
-                    return response.text
-                elif self.model_type == "openai":
-                    response = self.client.chat.completions.create(
-                        model=self.model,
-                        temperature=1,
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            *messages
-                        ]
-                    )
-                    return response.choices[0].message.content
-                else:
-                    print(f"Invalid model type: {self.model_type}")
-                    return None
 
-            response = create_messages([user_message], prompt)
+            response = self.create_messages(canvas_image_path, user_text, prompt)
             # Extract the response content
             raw_response = response
+            # if self.verbose:
+            #     print(f"Raw response: {raw_response}")
             # Parse the JSON response
             action_data = self._parse_json_response(raw_response)
 
@@ -349,17 +385,17 @@ class FreeDrawingAgent:
         except Exception as e:
             print(f"Error creating drawing instruction: {e}")
             # Create a fallback instruction
-            parsed_instruction = DrawingInstruction(
-                brush="marker",
-                color="default",
-                strokes=[
-                    {
-                        "x": [400, 450],
-                        "y": [250, 275],
-                    }
-                ],
-                thinking=f"Error occurred: {str(e)}"
-            )
+            # parsed_instruction = DrawingInstruction(
+            #     brush="marker",
+            #     color="default",
+            #     strokes=[
+            #         {
+            #             "x": [400, 450],
+            #             "y": [250, 275],
+            #         }
+            #     ],
+            #     thinking=f"Error occurred: {str(e)}"
+            # )
             parsing_success = False
             error_info = str(e)
 

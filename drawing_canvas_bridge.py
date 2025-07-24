@@ -332,24 +332,46 @@ class DrawingCanvasBridge:
     def set_brush_color(self, brush_type: str, color: str):
         """Set the color using the new color button system"""
         try:
-            # The new system uses global color swatches that work for all brush types
-            # First, try to find the color in existing palettes
             color_found = False
             
-            # Check if color exists in any of the dropdown palettes
-            palette_colors = self.driver.find_elements(By.CLASS_NAME, "palette-color")
-            for palette_color in palette_colors:
-                palette_bg_color = self.driver.execute_script(
-                    "return arguments[0].style.backgroundColor;", palette_color
-                )
-                # Convert color to hex if needed for comparison
-                if self._colors_match(palette_bg_color, color):
-                    palette_color.click()
-                    color_found = True
-                    print(f"Selected existing palette color {color} for {brush_type}")
-                    break
+            # The dropdowns are hidden by default, so we need to open them to search for colors
+            # Get all main color swatches (color1, color2, color3)
+            main_swatches = self.driver.find_elements(By.CSS_SELECTOR, ".main-color-swatch")
             
-            # If color not found in palettes, set it on the first main color swatch
+            for swatch in main_swatches:
+                # Open this dropdown by clicking the main swatch
+                swatch.click()
+                time.sleep(0.3)  # Wait for dropdown to appear
+                
+                # Now search for the color in the opened dropdown
+                try:
+                    # Get all palette colors in the currently open dropdown
+                    visible_palette_colors = self.driver.find_elements(By.CSS_SELECTOR, ".dropdown-content.show .palette-color")
+                    
+                    for palette_color in visible_palette_colors:
+                        palette_bg_color = self.driver.execute_script(
+                            "return arguments[0].style.backgroundColor;", palette_color
+                        )
+                        
+                        # Convert and compare colors
+                        if self._colors_match(palette_bg_color, color):
+                            palette_color.click()
+                            color_found = True
+                            print(f"Selected existing palette color {color} for {brush_type}")
+                            break
+                    
+                    if color_found:
+                        break
+                        
+                    # Close this dropdown by clicking outside or on the swatch again
+                    self.driver.execute_script("document.querySelectorAll('.dropdown-content').forEach(dd => dd.classList.remove('show')); activeDropdown = null;")
+                    time.sleep(0.2)
+                    
+                except Exception as e:
+                    print(f"Error searching in dropdown: {e}")
+                    continue
+            
+            # If color not found in any palette, set it as a custom color
             if not color_found:
                 # Use the selectColor function to set a custom color on color1
                 self.driver.execute_script(f"selectColor('{color}', 'color1');")
@@ -464,7 +486,8 @@ class DrawingCanvasBridge:
 
     def execute_instruction(self, instruction: DrawingInstruction, step_number: int = 0):
         """Execute a complete drawing instruction with optional video capture"""
-        print(f"Executing instruction: {instruction.thinking}")
+        print(f"Executing instruction: {instruction}")
+        # print(f"Executing instruction: {instruction.thinking}")
         print(f"Using brush: {instruction.brush}, color: {instruction.color}")
 
         # Set current step info for video overlays
@@ -532,8 +555,8 @@ class AutomatedDrawingCanvas:
     for automated creative drawing sessions.
     """
 
-    def __init__(self, api_key: str, canvas_url: str = None, enable_video_capture: bool = False, capture_fps: int = 30,model_type: str = "claude"):
-        self.agent = FreeDrawingAgent(api_key=api_key,model_type=model_type)
+    def __init__(self, api_key: str, canvas_url: str = None, enable_video_capture: bool = False, capture_fps: int = 30,model_type: str = "claude",verbose: bool = False):
+        self.agent = FreeDrawingAgent(api_key=api_key,model_type=model_type,verbose=verbose)
         self.bridge = DrawingCanvasBridge(canvas_url=canvas_url, enable_video_capture=enable_video_capture, capture_fps=capture_fps)
         self.enable_video_capture = enable_video_capture
 

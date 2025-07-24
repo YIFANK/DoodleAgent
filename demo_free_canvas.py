@@ -20,17 +20,28 @@ def main():
     claude_api_key = os.getenv("ANTHROPIC_API_KEY")
     openai_api_key = os.getenv("OPENAI_API_KEY")
     gemini_api_key = os.getenv("GEMINI_API_KEY")
-    if not claude_api_key:
-        print("Error: Please set the ANTHROPIC_API_KEY in your .env file")
-        print("Create a .env file with: ANTHROPIC_API_KEY=your-api-key-here")
-        sys.exit(1)
+    #ask user to choose a model
+    print("Choose a model:")
+    print("1. Claude")
+    print("2. OpenAI")
+    print("3. Gemini")
+    model_choice = input("Enter your choice (1-3): ").strip()
+    if model_choice == "1":
+        model_type = "claude"
+        api_key = claude_api_key
+    elif model_choice == "2":
+        model_type = "openai"
+        api_key = openai_api_key
+    elif model_choice == "3":
+        model_type = "gemini"
+        api_key = gemini_api_key
 
     # Get the path to the drawing_canvas.html file
     current_dir = os.path.dirname(os.path.abspath(__file__))
     canvas_url = f"file://{current_dir}/drawing_canvas.html"
 
     # Initialize the automated drawing canvas with video capture enabled
-    canvas = AutomatedDrawingCanvas(api_key=claude_api_key, canvas_url=canvas_url, enable_video_capture=True, capture_fps=30,model_type="claude")
+    canvas = AutomatedDrawingCanvas(api_key=api_key, canvas_url=canvas_url, enable_video_capture=True, capture_fps=30,model_type=model_type,verbose=True)
 
     try:
         print("🎨 Starting Free Drawing Canvas Demo")
@@ -89,7 +100,9 @@ def main():
                 # Stop video capture
                 canvas.bridge.stop_video_capture()
                 #save the final canvas image to ../output/free_canvas/timestamp.png
-                canvas.bridge.capture_canvas(f"../output/free_canvas/{timestamp}.png")
+                #create a folder for the custom session 
+                os.makedirs(f"../output/custom/{timestamp}", exist_ok=True)
+                canvas.bridge.capture_canvas(f"../output/custom/{timestamp}/{timestamp}.png")
 
         elif choice == "4":
             # Interactive demo
@@ -137,7 +150,9 @@ def main():
                 # Stop video capture
                 canvas.bridge.stop_video_capture()
                 #save the final canvas image to ../output/free_canvas/timestamp.png
-                canvas.bridge.capture_canvas(f"../output/interactive/{timestamp}.png")
+                #create a folder for the interactive session
+                os.makedirs(f"../output/interactive/{timestamp}", exist_ok=True)
+                canvas.bridge.capture_canvas(f"../output/interactive/{timestamp}/{timestamp}.png")
 
         elif choice == "5":
             # Mood-based demo
@@ -181,7 +196,9 @@ def main():
                 # Stop video capture
                 canvas.bridge.stop_video_capture()
                 #save the final canvas image to ../output/free_canvas/timestamp.png
-                canvas.bridge.capture_canvas(f"../output/mood/{mood}_{timestamp}.png")
+                #create a folder for the mood-based session
+                os.makedirs(f"../output/mood/{mood}_{timestamp}", exist_ok=True)
+                canvas.bridge.capture_canvas(f"../output/mood/{mood}_{timestamp}/{mood}_{timestamp}.png")
         elif choice == "6":
             # Abstract demo
             print("\n🎯 Running Abstract Demo...")
