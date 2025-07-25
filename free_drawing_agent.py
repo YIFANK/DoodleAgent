@@ -345,8 +345,8 @@ class FreeDrawingAgent:
             response = self.create_messages(canvas_image_path, user_text, prompt)
             # Extract the response content
             raw_response = response
-            # if self.verbose:
-            #     print(f"Raw response: {raw_response}")
+            if self.verbose:
+                print(f"Raw response: {raw_response}")
             # Parse the JSON response
             action_data = self._parse_json_response(raw_response)
 
@@ -686,10 +686,262 @@ Brushes:
   ]
 }}
 Basic shapes:
-- Vertical line: {{x: [100, 100], y: [50, 200]}}
-- Horizontal line: {{x: [50, 200], y: [100, 100]}}
-- U curve: {{x: [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150], y: [190, 140, 120, 110, 100, 100, 100, 110, 120, 140, 190]}}
-- n curve: {{x: [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150], y: [0, 50, 80, 90, 100, 100, 100, 90, 80, 50, 0]}}
+- Vertical line: {{"x": [100, 100], "y": [50, 200]}}
+- Horizontal line: {{"x": [50, 200], "y": [100, 100]}}
+- U curve: {{"x": [
+          105,
+          105,
+          105,
+          105,
+          105,
+          105,
+          105,
+          105,
+          106,
+          109,
+          113,
+          116,
+          120,
+          124,
+          128,
+          132,
+          135,
+          138,
+          142,
+          145,
+          150,
+          154,
+          160,
+          168,
+          175,
+          181,
+          188,
+          194,
+          198,
+          203,
+          208,
+          211,
+          216,
+          220,
+          224,
+          227,
+          230,
+          233,
+          235,
+          239,
+          242,
+          245,
+          248,
+          250,
+          253,
+          255,
+          257,
+          258,
+          258,
+          258,
+          258,
+          258,
+          258,
+          258
+        ],
+        "y": [
+          82.5,
+          82.5,
+          83.5,
+          88.5,
+          96.5,
+          107.5,
+          120.5,
+          132.5,
+          145.5,
+          159.5,
+          173.5,
+          185.5,
+          197.5,
+          208.5,
+          219.5,
+          225.5,
+          230.5,
+          234.5,
+          238.5,
+          242.5,
+          245.5,
+          248.5,
+          250.5,
+          252.5,
+          253.5,
+          254.5,
+          254.5,
+          254.5,
+          253.5,
+          251.5,
+          249.5,
+          247.5,
+          244.5,
+          241.5,
+          237.5,
+          234.5,
+          231.5,
+          228.5,
+          224.5,
+          219.5,
+          212.5,
+          205.5,
+          198.5,
+          191.5,
+          182.5,
+          169.5,
+          149.5,
+          123.5,
+          103.5,
+          93.5,
+          90.5,
+          90.5,
+          89.5,
+          89.5
+        ]}}
+- n curve: {{"x": [
+          107,
+          107,
+          107,
+          108,
+          108,
+          111,
+          115,
+          118,
+          121,
+          123,
+          128,
+          131,
+          133,
+          136,
+          137,
+          140,
+          144,
+          147,
+          149,
+          155,
+          156,
+          163,
+          165,
+          170,
+          175,
+          182,
+          186,
+          187,
+          192,
+          197,
+          202,
+          209,
+          213,
+          220,
+          226,
+          232,
+          234,
+          238,
+          240,
+          242,
+          244,
+          246,
+          248,
+          250,
+          252,
+          252,
+          253,
+          254,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255,
+          255
+        ],
+        "y": [
+          461.5,
+          461.5,
+          457.5,
+          447.5,
+          444.5,
+          433.5,
+          415.5,
+          404.5,
+          395.5,
+          390.5,
+          379.5,
+          374.5,
+          368.5,
+          362.5,
+          359.5,
+          353.5,
+          345.5,
+          342.5,
+          340.5,
+          334.5,
+          332.5,
+          326.5,
+          324.5,
+          321.5,
+          318.5,
+          316.5,
+          314.5,
+          314.5,
+          313.5,
+          312.5,
+          312.5,
+          312.5,
+          312.5,
+          312.5,
+          313.5,
+          318.5,
+          320.5,
+          325.5,
+          329.5,
+          334.5,
+          338.5,
+          344.5,
+          349.5,
+          355.5,
+          364.5,
+          372.5,
+          380.5,
+          389.5,
+          400.5,
+          413.5,
+          423.5,
+          429.5,
+          434.5,
+          439.5,
+          443.5,
+          446.5,
+          448.5,
+          451.5,
+          452.5,
+          454.5,
+          455.5,
+          456.5,
+          457.5,
+          458.5,
+          459.5,
+          460.5,
+          461.5,
+          462.5,
+          462.5
+        ]}}
 For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
 """
 
@@ -722,6 +974,7 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
 
         strokes = data.get("strokes", [])
         if not strokes:
+            print("no strokes")
             strokes = [
                 {
                     "x": [400, 450],
@@ -836,7 +1089,9 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
         matches = re.findall(json_pattern, content, re.DOTALL)
         if matches:
             try:
-                return json.loads(matches[0])
+                # Clean the extracted JSON first
+                cleaned_json = self._clean_json_string(matches[0])
+                return json.loads(cleaned_json)
             except json.JSONDecodeError:
                 pass
 
@@ -877,22 +1132,18 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
 
         if end_idx != -1:
             json_str = content[start_idx:end_idx]
+            
+            # Always clean the JSON string first before attempting to parse
+            cleaned_json = self._clean_json_string(json_str)
+            
             try:
-                return json.loads(json_str)
+                return json.loads(cleaned_json)
             except json.JSONDecodeError as e:
-                print(f"JSON parsing error: {e}")
+                print(f"JSON parsing error even after cleaning: {e}")
                 
                 # Enhanced debugging: Show the problematic characters
-                self._debug_json_chars(json_str, e)
-
-                # Method 3: Clean and normalize the JSON string
-                try:
-                    # Remove potential problematic characters and normalize whitespace
-                    cleaned_json = self._clean_json_string(json_str)
-                    return json.loads(cleaned_json)
-                except json.JSONDecodeError as e2:
-                    print(f"Cleaned JSON also failed: {e2}")
-                    pass
+                self._debug_json_chars(cleaned_json, e)
+                return None
 
         return None
     
@@ -903,49 +1154,58 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
         print(f"Total length: {len(json_str)}")
         print(f"Error: {error}")
         
+        # Try to extract position info from error message
+        error_pos = None
+        import re
+        pos_match = re.search(r'char (\d+)', str(error))
+        if pos_match:
+            error_pos = int(pos_match.group(1))
+            print(f"Error position: {error_pos}")
+        
         # Show first few lines with character codes
         for i, line in enumerate(lines[:5]):  # First 5 lines
             print(f"Line {i+1}: '{line}'")
-            if i == 1:  # Line 2 where the error occurs
-                print(f"  Character codes: {[ord(c) for c in line[:10]]}")
-                print(f"  Hex representation: {line[:10].encode('unicode_escape').decode('ascii')}")
+            if i == 1:  # Line 2 where the error often occurs
+                print(f"  Character codes: {[ord(c) for c in line[:15]]}")
+                print(f"  Hex representation: {line[:15].encode('unicode_escape').decode('ascii')}")
         
-        # Check for specific problematic characters
+        # If we have error position, show characters around that position
+        if error_pos is not None and error_pos < len(json_str):
+            start_pos = max(0, error_pos - 10)
+            end_pos = min(len(json_str), error_pos + 10)
+            problem_area = json_str[start_pos:end_pos]
+            print(f"🎯 Characters around error position {error_pos}:")
+            print(f"  Text: '{problem_area}'")
+            print(f"  Codes: {[ord(c) for c in problem_area]}")
+            print(f"  Hex: {problem_area.encode('unicode_escape').decode('ascii')}")
+            
+            # Highlight the exact character
+            if error_pos < len(json_str):
+                problem_char = json_str[error_pos]
+                print(f"  Problem char at {error_pos}: '{problem_char}' (code: {ord(problem_char)}, hex: {hex(ord(problem_char))})")
+        
+        # Check for specific problematic characters in the entire string
         problematic_chars = []
-        for i, char in enumerate(json_str[:50]):  # First 50 chars
+        for i, char in enumerate(json_str):
             code = ord(char)
-            if code > 127 or (code < 32 and code not in [9, 10, 13]):  # Non-ASCII or control chars (except tab, LF, CR)
+            if code < 32 and code not in [9, 10, 13]:  # Control chars (except tab, LF, CR)
                 problematic_chars.append((i, char, code, hex(code)))
         
         if problematic_chars:
-            print(f"🚨 Found {len(problematic_chars)} problematic characters:")
-            for pos, char, code, hex_code in problematic_chars:
-                print(f"  Position {pos}: '{char}' (code: {code}, hex: {hex_code})")
+            print(f"🚨 Found {len(problematic_chars)} control characters:")
+            for pos, char, code, hex_code in problematic_chars[:10]:  # Show first 10
+                print(f"  Position {pos}: '{repr(char)}' (code: {code}, hex: {hex_code})")
     
     def _clean_json_string(self, json_str: str) -> str:
-        """Clean and normalize JSON string to fix common parsing issues"""
-        import re
-        
-        # Step 1: Normalize unicode and remove problematic characters
-        # Replace various types of spaces with regular spaces
-        json_str = re.sub(r'[\u00A0\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]', ' ', json_str)
-        
-        # Step 2: Normalize line endings
-        json_str = json_str.replace('\r\n', '\n').replace('\r', '\n')
-        
-        # Step 3: Remove or replace control characters (except necessary ones)
-        json_str = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', json_str)
-        
-        # Step 4: Normalize quotes (replace smart quotes with regular quotes)
+        # Fix raw newlines within quoted strings
+        def escape_newlines_in_strings(match):
+            return match.group(0).replace('\n', '\\n')
+        #replace quotes
         json_str = json_str.replace('"', '"').replace('"', '"').replace(''', "'").replace(''', "'")
-        
-        # Step 5: Normalize whitespace within the JSON structure
-        # This is more conservative - only normalize spacing around structural elements
-        json_str = re.sub(r'\s*{\s*', '{\n  ', json_str)  # Opening braces
-        json_str = re.sub(r'\s*}\s*', '\n}', json_str)    # Closing braces
-        json_str = re.sub(r'\s*:\s*', ': ', json_str)     # Colons
-        json_str = re.sub(r'\s*,\s*', ',\n  ', json_str)  # Commas
-        
+        import re
+        # Match strings like "...."
+        json_str = re.sub(r'"(?:[^"\\]|\\.)*"', escape_newlines_in_strings, json_str)
+
         return json_str
 
     def _validate_and_sanitize(self, data: Dict) -> Dict:
