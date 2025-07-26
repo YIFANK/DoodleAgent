@@ -20,6 +20,7 @@ def main():
     claude_api_key = os.getenv("ANTHROPIC_API_KEY")
     openai_api_key = os.getenv("OPENAI_API_KEY")
     gemini_api_key = os.getenv("GEMINI_API_KEY")
+
     #ask user to choose a model
     print("Choose a model:")
     print("1. Claude")
@@ -35,13 +36,17 @@ def main():
     elif model_choice == "3":
         model_type = "gemini"
         api_key = gemini_api_key
+    else:
+        print("Invalid choice, defaulting to Claude")
+        model_type = "claude"
+        api_key = claude_api_key
 
     # Get the path to the drawing_canvas.html file
     current_dir = os.path.dirname(os.path.abspath(__file__))
     canvas_url = f"file://{current_dir}/drawing_canvas.html"
 
     # Initialize the automated drawing canvas with video capture enabled
-    canvas = AutomatedDrawingCanvas(api_key=api_key, canvas_url=canvas_url, enable_video_capture=True, capture_fps=30,model_type=model_type,verbose=True)
+    canvas = AutomatedDrawingCanvas(api_key=api_key, canvas_url=canvas_url, enable_video_capture=True, capture_fps=30, model_type=model_type, verbose=True)
 
     try:
         print("🎨 Starting Free Drawing Canvas Demo")
@@ -67,273 +72,290 @@ def main():
         print("1. Quick Demo (3 drawing steps)")
         print("2. Extended Demo (7 drawing steps)")
         print("3. Custom Demo (specify number of steps)")
-        print("4. Interactive Demo (you ask questions)")
+        # print("4. Interactive Demo (you ask questions)") # Disabled for now
         print("5. Mood-Based Demo (express artistic moods through drawing)")
         print("6. Abstract Demo (create non-representational art)")
+        print("7. Random Strokes Demo (random stroke generation)")
 
-        choice = input("\nEnter your choice (1-6): ").strip()
+        choice = input("\nEnter your choice (1-3, 5-7): ").strip()
 
-        if choice == "1":
-            # Quick demo
-            print("\n🎯 Running Quick Demo...")
-            canvas.creative_session(num_iterations=3, output_dir=run_output_dir)
-
-        elif choice == "2":
-            # Extended demo
-            print("\n🎯 Running Extended Demo...")
-            canvas.creative_session(num_iterations=7, output_dir=run_output_dir)
-
-        elif choice == "3":
-            # Custom demo
+        # Ask for number of repetitions for all modes except interactive
+        num_repeats = 1
+        if choice != "4":  # Interactive mode doesn't need repeats (and is disabled)
             try:
-                num_steps = int(input("Enter number of drawing steps: "))
-                if num_steps > 0:
-                    print(f"\n🎯 Running Custom Demo with {num_steps} steps...")
-                    canvas.creative_session(num_iterations=num_steps, output_dir=run_output_dir)
-                else:
-                    print("Invalid number of steps, running quick demo instead...")
-                    canvas.creative_session(num_iterations=3, output_dir=run_output_dir)
+                repeat_input = input("\nHow many times to repeat this run? (default: 1): ").strip()
+                if repeat_input:
+                    num_repeats = int(repeat_input)
+                    if num_repeats <= 0:
+                        num_repeats = 1
+                        print("Invalid number, using default of 1 repeat")
             except ValueError:
-                print("Invalid input, running quick demo instead...")
-                canvas.creative_session(num_iterations=3, output_dir=run_output_dir)
-            finally:
-                # Stop video capture
-                canvas.bridge.stop_video_capture()
-                #save the final canvas image to ../output/free_canvas/timestamp.png
-                #create a folder for the custom session 
-                os.makedirs(f"../output/custom/{timestamp}", exist_ok=True)
-                canvas.bridge.capture_canvas(f"../output/custom/{timestamp}/{timestamp}.png")
+                num_repeats = 1
+                print("Invalid input, using default of 1 repeat")
 
-        elif choice == "4":
-            # Interactive demo
-            print("\n🎯 Running Interactive Demo...")
-            print("You can ask the AI what to draw next. Type 'quit' to stop.")
-            print("🎥 Video recording enabled - capturing the entire interactive session!")
+        # Handle disabled interactive mode
+        if choice == "4":
+            print("Interactive demo is temporarily disabled. Please choose another option.")
+            return
 
-            # Start video capture for interactive session
-            video_output = f"{run_output_dir}/interactive_session_{timestamp}.mp4"
-            canvas.bridge.start_video_capture(video_output)
+        # Initialize variables for custom demo
+        num_steps = 3  # default value
 
-            step = 0
-            try:
-                # Get initial question that will guide the entire drawing session
-                question = input("What would you like the AI to draw? (or 'quit'): ").strip()
-                if question.lower() in ['quit', 'exit', 'stop']:
-                    return
-                
-                if not question:
-                    question = "Create an abstract artistic composition"
-                max_steps = 15
-                while step < max_steps:
-                    step += 1
-                    print(f"\n--- Interactive Step {step} ---")
+        # Run the selected demo num_repeats times
+        for repeat_run in range(num_repeats):
+            if num_repeats > 1:
+                print(f"\n{'='*60}")
+                print(f"🔄 REPEAT RUN {repeat_run + 1}/{num_repeats}")
+                print(f"{'='*60}")
 
-                    # Execute drawing step
-                    canvas_file = f"{run_output_dir}/interactive_step_{step}.png"
-                    instruction = canvas.draw_from_canvas(canvas_file, question, step_number=step)
+                # Create new timestamped output directory for each repeat
+                repeat_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                repeat_output_dir = f"output/{repeat_timestamp}"
+                os.makedirs(repeat_output_dir, exist_ok=True)
+                print(f"📁 Created output directory: {repeat_output_dir}")
 
-                    print(f"🎨 AI's response: {instruction.thinking}")
-                    print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
+                # Clear canvas for new run
+                if repeat_run > 0:
+                    canvas.bridge.clear_canvas()
+            else:
+                repeat_output_dir = run_output_dir
 
-                    # Show strokes summary
-                    print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
-                    for i, stroke in enumerate(instruction.strokes):
-                        print(f"   {i+1}. {stroke['x']}, {stroke['y']}")
+            if choice == "1":
+                # Quick demo
+                if repeat_run == 0:
+                    print(f"\n🎯 Running Quick Demo {num_repeats} time(s)...")
+                canvas.creative_session(num_iterations=3, output_dir=repeat_output_dir)
 
-                # Save final interactive artwork
-                canvas.bridge.capture_canvas(f"{run_output_dir}/interactive_final.png")
-                print(f"\n🎉 Interactive session completed!")
-                os.makedirs(f"../output/interactive", exist_ok=True)
-                canvas.bridge.capture_canvas(f"../output/interactive/{timestamp}.png")
-                print(f"Final artwork saved as: {run_output_dir}/interactive_final.png")
-                print(f"🎬 Video saved as: {video_output}")
-                
-            finally:
-                # Stop video capture
-                canvas.bridge.stop_video_capture()
-                #save the final canvas image to ../output/free_canvas/timestamp.png
+            elif choice == "2":
+                # Extended demo
+                if repeat_run == 0:
+                    print(f"\n🎯 Running Extended Demo {num_repeats} time(s)...")
+                canvas.creative_session(num_iterations=7, output_dir=repeat_output_dir)
 
-        elif choice == "5":
-            # Mood-based demo
-            print("\n🎯 Running Mood-Based Demo...")
-            print("The AI will autonomously determine artistic moods and create drawings that express them!")
-            print("Each step starts with the AI choosing a mood, then creating art that embodies that mood.")
-            print("🎥 Video recording enabled - capturing the entire mood-based session!")
+            elif choice == "3":
+                # Custom demo
+                if repeat_run == 0:
+                    try:
+                        num_steps = int(input("Enter number of drawing steps: "))
+                        if num_steps <= 0:
+                            num_steps = 3
+                            print("Invalid number of steps, using 3 instead...")
+                    except ValueError:
+                        num_steps = 3
+                        print("Invalid input, using 3 steps instead...")
 
-            # Start video capture for mood-based session
-            video_output = f"{run_output_dir}/mood_session_{timestamp}.mp4"
-            canvas.bridge.start_video_capture(video_output)
+                    print(f"\n🎯 Running Custom Demo with {num_steps} steps, {num_repeats} time(s)...")
 
-            # Run for 15 automatic iterations
-            num_iterations = 15
-            #get users input for the mood
-            mood = input("Enter a mood for the AI to express: ")
-            try:
-                for step in range(1, num_iterations + 1):
-                    print(f"\n--- Mood Step {step} ---")
-                    print(f"🎨 AI is determining the mood for this step...")
+                canvas.creative_session(num_iterations=num_steps, output_dir=repeat_output_dir)
 
-                    # Execute mood-based drawing step (LLM determines mood autonomously)
-                    canvas_file = f"{run_output_dir}/mood_step_{step}.png"
-                    instruction = canvas.draw_from_emotion(canvas_file, emotion=mood, step_number=step)  # No mood parameter - LLM chooses
+                # Save final canvas for custom demo
+                repeat_ts = repeat_timestamp if num_repeats > 1 else timestamp
+                os.makedirs(f"../output/custom/{repeat_ts}", exist_ok=True)
+                canvas.bridge.capture_canvas(f"../output/custom/{repeat_ts}/{repeat_ts}.png")
 
-                    print(f"🎨 AI's mood: {instruction.thinking}")
-                    print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
+            elif choice == "5":
+                # Mood-based demo
+                if repeat_run == 0:
+                    mood = input("Enter a mood for the AI to express: ").strip()
+                    if not mood:
+                        mood = "creative"
+                    try:
+                        num_iterations = int(input("How many strokes per run? (default: 15): ").strip() or "15")
+                        if num_iterations <= 0:
+                            num_iterations = 15
+                    except ValueError:
+                        num_iterations = 15
+                        print("Invalid input, using 15 strokes per run")
 
-                    # Show strokes summary
-                    print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
-                    for i, stroke in enumerate(instruction.strokes):
-                        print(f"   {i+1}. {stroke['x']}, {stroke['y']}")
+                    print(f"\n🎯 Running Mood-Based Demo ({mood}) with {num_iterations} strokes, {num_repeats} time(s)...")
 
-                # Save final mood-based artwork
-                canvas.bridge.capture_canvas(f"{run_output_dir}/mood_{mood}.png")
-                print(f"\n🎉 Mood-based session completed!")
-                print(f"Final artwork saved as: {run_output_dir}/mood_{mood}.png")
-                os.makedirs(f"../output/mood/{mood}", exist_ok=True)
-                canvas.bridge.capture_canvas(f"../output/mood/{mood}/{timestamp}.png")
-                print(f"🎬 Video saved as: {video_output}")
-                
-            finally:
-                # Stop video capture
-                canvas.bridge.stop_video_capture()
-                #save the final canvas image to ../output/free_canvas/timestamp.png
-                #create a folder for the mood-based session
+                print("🎥 Video recording enabled - capturing the entire mood-based session!")
+                # Start video capture for mood-based session
+                video_output = f"{repeat_output_dir}/mood_session_{timestamp}_repeat_{repeat_run + 1}.mp4"
+                canvas.bridge.start_video_capture(video_output)
 
-        elif choice == "6":
-            # Abstract demo
-            print("\n🎯 Running Abstract Demo...")
-            print("The AI will create pure, non-representational art!")
-            print("No concrete objects - just abstract shapes, lines, and pure creativity.")
-            print("🎥 Video recording enabled - capturing the entire abstract session!")
+                try:
+                    for step in range(1, num_iterations + 1):
+                        print(f"\n--- Mood Step {step} ---")
+                        print(f"🎨 AI is determining the mood for this step...")
 
-            # Start video capture for abstract session
-            video_output = f"{run_output_dir}/abstract_session_{timestamp}.mp4"
-            canvas.bridge.start_video_capture(video_output)
+                        # Execute mood-based drawing step
+                        canvas_file = f"{repeat_output_dir}/mood_step_{step}.png"
+                        instruction = canvas.draw_from_emotion(canvas_file, emotion=mood, step_number=step)
 
-            num_iterations = 30
-            try:
-                for step in range(1, num_iterations + 1):
-                    print(f"\n--- Abstract Step {step} ---")
-                    print(f"🎨 AI is creating abstract art...")
+                        print(f"🎨 AI's mood: {instruction.thinking}")
+                        print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
 
-                    # Execute abstract drawing step
-                    canvas_file = f"{run_output_dir}/abstract_step_{step}.png"
-                    instruction = canvas.draw_from_abstract(canvas_file, step_number=step)
+                        # Show strokes summary
+                        print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
+                        for i, stroke in enumerate(instruction.strokes):
+                            print(f"   {i+1}. {stroke['x']}, {stroke['y']}")
 
-                    print(f"🎨 AI's abstract creation: {instruction.reasoning}")
-                    print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
+                    # Save final mood-based artwork
+                    canvas.bridge.capture_canvas(f"{repeat_output_dir}/mood_{mood}.png")
+                    if repeat_run == num_repeats - 1:
+                        print(f"\n🎉 Mood-based session completed!")
+                        print(f"Final artwork saved as: {repeat_output_dir}/mood_{mood}.png")
+                        print(f"🎬 Video saved as: {video_output}")
 
-                    # Show strokes summary
-                    print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
-                    for i, stroke in enumerate(instruction.strokes):
-                        print(f"   {i+1}. {stroke['x']}, {stroke['y']}")
+                finally:
+                    # Stop video capture
+                    canvas.bridge.stop_video_capture()
 
-                # Save final abstract artwork
-                canvas.bridge.capture_canvas(f"{run_output_dir}/abstract_final.png")
-                print(f"\n🎉 Abstract session completed!")
-                print(f"Final artwork saved as: {run_output_dir}/abstract_final.png")
-                print(f"🎬 Video saved as: {video_output}")
-                
-            finally:
-                # Stop video capture
-                canvas.bridge.stop_video_capture()
-        elif choice == "7":
-            #random strokes
-            # print("\n🎯 Running Random Strokes Demo...")
-            # print("The AI will create random strokes on the canvas.")
-            # print("🎥 Video recording enabled - capturing the entire random strokes session!")
+                # Save overall final mood artwork
+                if repeat_run == num_repeats - 1:
+                    os.makedirs(f"../output/mood/{mood}", exist_ok=True)
+                    canvas.bridge.capture_canvas(f"../output/mood/{mood}/{timestamp}.png")
 
-            # # Start video capture for random strokes session
-            # video_output = f"{run_output_dir}/random_strokes_session_{timestamp}.mp4"
-            # canvas.bridge.start_video_capture(video_output)
-            num_iterations = 15
-            try:
-                for step in range(1, num_iterations + 1):
-                    print(f"\n--- Random Stroke Step {step} ---")
-                    
-                    # Random stroke length between 3-7 points
-                    stroke_length = random.randint(3, 7)
-                    
-                    # Random starting point
-                    start_x = random.uniform(0, 850)  # Keep within canvas bounds
-                    start_y = random.uniform(0, 500)
-                    
-                    # Generate points for the stroke
-                    x_points = [start_x]
-                    y_points = [start_y]
-                    
-                    # Circle radius for next point sampling
-                    radius = 100
-                    
-                    # Generate subsequent points
-                    for _ in range(stroke_length - 1):
-                        # Get last point
-                        last_x = x_points[-1]
-                        last_y = y_points[-1]
-                        
-                        # Random angle and distance within circle
-                        angle = random.uniform(0, 2 * math.pi)
-                        distance = random.uniform(0, radius)
-                        
-                        # Calculate next point
-                        #do random next point
-                        # next_x = random.uniform(0,850)
-                        # next_y = random.uniform(0,500)
-                        next_x = last_x + distance * math.cos(angle)
-                        next_y = last_y + distance * math.sin(angle)
-                        
-                        # # Keep within canvas bounds
-                        next_x = max(0, min(850, next_x))
-                        next_y = max(0, min(500, next_y))
-                        
-                        x_points.append(next_x)
-                        y_points.append(next_y)
-                    
-                    # Random color from palette
-                    color_family = random.choice(list(canvas.agent.color_palette.keys()))
-                    color = random.choice(list(canvas.agent.color_palette[color_family].values()))
-                    # Random brush
-                    brush = random.choice(['marker', 'crayon', 'wiggle', 'spray', 'fountain'])
-                    print(x_points,y_points)
-                    # Create stroke data
-                    stroke = {
-                        'x': x_points,
-                        'y': y_points,      
-                    }
-                    
-                    # Execute the stroke
-                    instruction = DrawingInstruction(
-                        brush=brush,
-                        color=color,
-                        strokes=[stroke],
-                        thinking=f"Random stroke with {brush} brush"
-                    )
-                    canvas.bridge.execute_instruction(instruction, step)
-                    
-                    print(f"🖌️ Drew {stroke_length}-point stroke with {brush} brush in {color}")
-                
-                # Save final random strokes artwork
-                canvas.bridge.capture_canvas(f"{run_output_dir}/random_strokes_final.png")
-                print(f"\n🎉 Random strokes session completed!")
-                # print(f"Final artwork saved as: {run_output_dir}/random_strokes_final.png")
-                # print(f"🎬 Video saved as: {video_output}")
-                
-            finally:
-                # Stop video capture
-                canvas.bridge.stop_video_capture()
-        else:
-            print("Invalid choice, running quick demo...")
-            canvas.creative_session(num_iterations=3, output_dir=run_output_dir)
+            elif choice == "6":
+                # Abstract demo
+                if repeat_run == 0:
+                    try:
+                        num_iterations = int(input("How many strokes per run? (default: 30): ").strip() or "30")
+                        if num_iterations <= 0:
+                            num_iterations = 30
+                    except ValueError:
+                        num_iterations = 30
+                        print("Invalid input, using 30 strokes per run")
+
+                    print(f"\n🎯 Running Abstract Demo with {num_iterations} strokes, {num_repeats} time(s)...")
+
+                print("🎥 Video recording enabled - capturing the entire abstract session!")
+                # Start video capture for abstract session
+                video_output = f"{repeat_output_dir}/abstract_session_{timestamp}_repeat_{repeat_run + 1}.mp4"
+                canvas.bridge.start_video_capture(video_output)
+
+                try:
+                    for step in range(1, num_iterations + 1):
+                        print(f"\n--- Abstract Step {step} ---")
+                        print(f"🎨 AI is creating abstract art...")
+
+                        # Execute abstract drawing step
+                        canvas_file = f"{repeat_output_dir}/abstract_step_{step}.png"
+                        instruction = canvas.draw_from_abstract(canvas_file, step_number=step)
+
+                        print(f"🎨 AI's abstract creation: {instruction.reasoning}")
+                        print(f"🖌️ Using {instruction.brush} brush with color {instruction.color}")
+
+                        # Show strokes summary
+                        print(f"📝 Drawing {len(instruction.strokes)} stroke(s):")
+                        for i, stroke in enumerate(instruction.strokes):
+                            print(f"   {i+1}. {stroke['x']}, {stroke['y']}")
+
+                    # Save final abstract artwork
+                    canvas.bridge.capture_canvas(f"{repeat_output_dir}/abstract_final.png")
+                    if repeat_run == num_repeats - 1:
+                        print(f"\n🎉 Abstract session completed!")
+                        print(f"Final artwork saved as: {repeat_output_dir}/abstract_final.png")
+                        print(f"🎬 Video saved as: {video_output}")
+
+                finally:
+                    # Stop video capture
+                    canvas.bridge.stop_video_capture()
+
+            elif choice == "7":
+                # Random strokes demo
+                if repeat_run == 0:
+                    try:
+                        num_iterations = int(input("How many strokes per run? (default: 15): ").strip() or "15")
+                        if num_iterations <= 0:
+                            num_iterations = 15
+                    except ValueError:
+                        num_iterations = 15
+                        print("Invalid input, using 15 strokes per run")
+
+                    print(f"\n🎯 Running Random Strokes Demo with {num_iterations} strokes, {num_repeats} time(s)...")
+
+                # Start video capture for random strokes session
+                video_output = f"{repeat_output_dir}/random_strokes_{timestamp}_repeat_{repeat_run + 1}.mp4"
+                canvas.bridge.start_video_capture(video_output)
+
+                try:
+                    for step in range(1, num_iterations + 1):
+                        print(f"\n--- Random Stroke Step {step} ---")
+
+                        # Random stroke length between 3-7 points
+                        stroke_length = random.randint(3, 7)
+
+                        # Random starting point
+                        start_x = random.uniform(0, 850)  # Keep within canvas bounds
+                        start_y = random.uniform(0, 500)
+
+                        # Generate points for the stroke
+                        x_points = [start_x]
+                        y_points = [start_y]
+
+                        # Circle radius for next point sampling
+                        radius = 100
+
+                        # Generate subsequent points
+                        for _ in range(stroke_length - 1):
+                            # Get last point
+                            last_x = x_points[-1]
+                            last_y = y_points[-1]
+
+                            # Random angle and distance within circle
+                            angle = random.uniform(0, 2 * math.pi)
+                            distance = random.uniform(0, radius)
+
+                            # Calculate next point
+                            next_x = last_x + distance * math.cos(angle)
+                            next_y = last_y + distance * math.sin(angle)
+
+                            # Keep within canvas bounds
+                            next_x = max(0, min(850, next_x))
+                            next_y = max(0, min(500, next_y))
+
+                            x_points.append(next_x)
+                            y_points.append(next_y)
+
+                        # Random color from palette
+                        color_family = random.choice(list(canvas.agent.color_palette.keys()))
+                        color = random.choice(list(canvas.agent.color_palette[color_family].values()))
+                        # Random brush
+                        brush = random.choice(['marker', 'crayon', 'wiggle', 'spray', 'fountain'])
+                        print(x_points, y_points)
+
+                        # Create stroke data
+                        stroke = {
+                            'x': x_points,
+                            'y': y_points,
+                        }
+
+                        # Execute the stroke
+                        instruction = DrawingInstruction(
+                            brush=brush,
+                            color=color,
+                            strokes=[stroke],
+                            thinking=f"Random stroke with {brush} brush"
+                        )
+                        canvas.bridge.execute_instruction(instruction, step)
+
+                        print(f"🖌️ Drew {stroke_length}-point stroke with {brush} brush in {color}")
+
+                    # Save final random strokes artwork
+                    canvas.bridge.capture_canvas(f"{repeat_output_dir}/random_strokes_final.png")
+                    if repeat_run == num_repeats - 1:
+                        print(f"\n🎉 Random strokes session completed!")
+                        print(f"🎬 Video saved as: {video_output}")
+
+                finally:
+                    # Stop video capture
+                    canvas.bridge.stop_video_capture()
+
+            else:
+                print("Invalid choice, running quick demo...")
+                canvas.creative_session(num_iterations=3, output_dir=repeat_output_dir)
 
         print(f"\n🎉 Demo completed successfully!")
         print(f"Check the '{run_output_dir}' folder for saved artwork images.")
 
     except KeyboardInterrupt:
         print("\n⚠️ Demo interrupted by user")
-    # except Exception as e:
-    #     print(f"\n❌ Error during demo: {e}")
-    #     import traceback
-    #     traceback.print_exc()
+    except Exception as e:
+        print(f"\n❌ Error during demo: {e}")
+        import traceback
+        traceback.print_exc()
 
     finally:
         canvas.close()

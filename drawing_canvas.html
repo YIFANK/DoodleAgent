@@ -118,7 +118,7 @@
 
         .brush-btn.spray{
             background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-            color: white;   
+            color: white;
         }
 
         .brush-btn.fountain {
@@ -377,11 +377,12 @@
             });
         }
         function clearCanvas() {
-            background('#fbf8f3');
+
             hasDrawn = false;
             document.getElementById('canvasWrapper').classList.remove('drawing');
             // clear the canvas
             clear();
+            background('#fbf8f3');
         }
 
         function saveCanvas() {

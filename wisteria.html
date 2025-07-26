@@ -999,10 +999,11 @@
       }
 
       function clearCanvas() {
-        background("#fbf8f3");
+
         hasDrawn = false;
         document.getElementById("canvasWrapper").classList.remove("drawing");
         clear();
+        background("#fbf8f3");
         //clear the strokes
         strokes = [];
         currentStroke = [];
@@ -1165,7 +1166,7 @@
 
           // Get brush parameters
           const best_params = {
-              "fountain": [28,70], 
+              "fountain": [28,70],
               "marker": [8,20],
               "spray": [20,50],
               "wiggle": [8,20],
@@ -1176,7 +1177,7 @@
 
           // Calculate distance between points
           const distance = Math.sqrt(
-              Math.pow(endPoint.x - startPoint.x, 2) + 
+              Math.pow(endPoint.x - startPoint.x, 2) +
               Math.pow(endPoint.y - startPoint.y, 2)
           );
 
