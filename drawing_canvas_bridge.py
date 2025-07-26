@@ -18,6 +18,7 @@ import base64
 from PIL import Image, ImageDraw, ImageFont
 import io
 import os
+import json
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -105,6 +106,18 @@ class DrawingCanvasBridge:
         # Ensure output directory exists
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
+        # Ensure temp directory exists and is clean
+        if not os.path.exists(self.temp_dir):
+            os.makedirs(self.temp_dir)
+        else:
+            # Clean existing frames from previous sessions
+            for file in os.listdir(self.temp_dir):
+                if file.endswith('.png'):
+                    try:
+                        os.remove(os.path.join(self.temp_dir, file))
+                    except Exception as e:
+                        print(f"Warning: Could not remove old frame {file}: {e}")
+
         self.video_output_path = output_path
         self.capturing = True
         self.frame_counter = 0
@@ -174,12 +187,21 @@ class DrawingCanvasBridge:
 
             # Save frame
             frame_path = os.path.join(self.temp_dir, f"frame_{self.frame_counter:06d}.png")
+            
+            # Ensure temp directory still exists (in case it was accidentally deleted)
+            if not os.path.exists(self.temp_dir):
+                print(f"Warning: temp directory {self.temp_dir} doesn't exist, recreating...")
+                os.makedirs(self.temp_dir, exist_ok=True)
+            
             image.save(frame_path)
-
             self.frame_counter += 1
 
         except Exception as e:
             print(f"Error capturing frame: {e}")
+            print(f"  Temp dir: {self.temp_dir}")
+            print(f"  Temp dir exists: {os.path.exists(self.temp_dir)}")
+            print(f"  Frame counter: {self.frame_counter}")
+            print(f"  Capturing: {self.capturing}")
 
     def _add_text_overlay(self, image: Image.Image) -> Image.Image:
         """Add text overlay to frame"""
@@ -273,14 +295,18 @@ class DrawingCanvasBridge:
             print(f"Error compiling video: {e}")
 
     def _cleanup_temp_frames(self):
-        """Clean up temporary frame files"""
+        """Clean up temporary frame files but keep the directory"""
         try:
             if os.path.exists(self.temp_dir):
                 for file in os.listdir(self.temp_dir):
                     file_path = os.path.join(self.temp_dir, file)
                     if os.path.isfile(file_path):
-                        os.remove(file_path)
-                os.rmdir(self.temp_dir)
+                        try:
+                            os.remove(file_path)
+                        except Exception as file_error:
+                            print(f"Warning: Could not remove frame file {file_path}: {file_error}")
+                # Don't remove the directory itself - keep it for next session
+                print(f"🗑️ Cleaned up temp frames from {self.temp_dir}")
         except Exception as e:
             print(f"Warning: Failed to cleanup temp files: {e}")
 
@@ -669,6 +695,97 @@ class AutomatedDrawingCanvas:
                 self.bridge.stop_video_capture()
 
         return instructions
+
+    def export_session_logs_as_json(self, output_dir: str, session_name: str = "session"):
+        """Export current session logs as JSON to specified directory"""
+        try:
+            # Create output directory if it doesn't exist
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Extract drawing instructions from the current session
+            instructions_data = []
+            
+            # Get the stroke history from the agent (note: stroke_history contains individual strokes)
+            for i, stroke_info in enumerate(self.agent.stroke_history):
+                instruction_data = {
+                    "step": i + 1,
+                    "brush": stroke_info.get("brush", "unknown"),
+                    "thinking": stroke_info.get("thinking", "No thinking recorded"),
+                    "stroke": {
+                        "x": stroke_info.get("x_coords", []),
+                        "y": stroke_info.get("y_coords", [])
+                    },
+                    "export_timestamp": datetime.now().isoformat()
+                }
+                instructions_data.append(instruction_data)
+            
+            # Create session metadata
+            session_data = {
+                "session_info": {
+                    "session_name": session_name,
+                    "total_strokes": len(instructions_data),
+                    "export_timestamp": datetime.now().isoformat(),
+                    "model_type": self.agent.model
+                },
+                "drawing_strokes": instructions_data
+            }
+            
+            # Save as JSON
+            json_file = os.path.join(output_dir, f"{session_name}_log.json")
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(session_data, f, indent=2, ensure_ascii=False)
+            
+            print(f"📝 Session logs exported as JSON: {json_file}")
+            return json_file
+            
+        except Exception as e:
+            print(f"Warning: Failed to export session logs as JSON: {e}")
+            return None
+
+    def save_complete_session_data(self, output_dir: str, session_name: str = "session", instructions: list = None):
+        """Save complete session data including individual instructions and summary"""
+        try:
+            # Create output directory if it doesn't exist
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # If instructions are provided, use them; otherwise use stroke history
+            if instructions:
+                instructions_data = []
+                for i, instruction in enumerate(instructions):
+                    instruction_data = {
+                        "step": i + 1,
+                        "brush": instruction.brush,
+                        "color": instruction.color,
+                        "strokes": instruction.strokes,
+                        "thinking": instruction.thinking,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    instructions_data.append(instruction_data)
+                
+                session_data = {
+                    "session_info": {
+                        "session_name": session_name,
+                        "total_instructions": len(instructions_data),
+                        "export_timestamp": datetime.now().isoformat(),
+                        "model_type": self.agent.model
+                    },
+                    "drawing_instructions": instructions_data
+                }
+            else:
+                # Fall back to stroke history method
+                return self.export_session_logs_as_json(output_dir, session_name)
+            
+            # Save as JSON
+            json_file = os.path.join(output_dir, f"{session_name}_complete_log.json")
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(session_data, f, indent=2, ensure_ascii=False)
+            
+            print(f"📝 Complete session data saved as JSON: {json_file}")
+            return json_file
+            
+        except Exception as e:
+            print(f"Warning: Failed to save complete session data: {e}")
+            return None
 
     def close(self):
         """Close the drawing canvas interface"""

@@ -345,8 +345,8 @@ class FreeDrawingAgent:
             response = self.create_messages(canvas_image_path, user_text, prompt)
             # Extract the response content
             raw_response = response
-            if self.verbose:
-                print(f"Raw response: {raw_response}")
+            # if self.verbose:
+            #     print(f"Raw response: {raw_response}")
             # Parse the JSON response
             action_data = self._parse_json_response(raw_response)
 
@@ -982,6 +982,10 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                 }
             ]
 
+        # Handle case where strokes is a single stroke object instead of an array
+        if isinstance(strokes, dict) and "x" in strokes and "y" in strokes:
+            strokes = [strokes]  # Convert single stroke to array
+
         # Validate strokes (same as regular validation)
         validated_strokes = []
         for stroke in strokes:
@@ -1039,6 +1043,10 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                     "y": [250, 200, 275],
                 }
             ]
+
+        # Handle case where strokes is a single stroke object instead of an array
+        if isinstance(strokes, dict) and "x" in strokes and "y" in strokes:
+            strokes = [strokes]  # Convert single stroke to array
 
         # Validate strokes (same as regular validation)
         validated_strokes = []
@@ -1200,8 +1208,18 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
         # Fix raw newlines within quoted strings
         def escape_newlines_in_strings(match):
             return match.group(0).replace('\n', '\\n')
-        #replace quotes
-        json_str = json_str.replace('"', '"').replace('"', '"').replace(''', "'").replace(''', "'")
+        
+        # Replace smart quotes with regular ASCII quotes
+        # Left and right double quotation marks (U+201C, U+201D) -> ASCII quote (U+0022)
+        json_str = json_str.replace('\u201c', '"').replace('\u201d', '"')
+        # Left and right single quotation marks (U+2018, U+2019) -> ASCII apostrophe (U+0027)
+        json_str = json_str.replace('\u2018', "'").replace('\u2019', "'")
+        # Additional smart quote variants
+        json_str = json_str.replace('\u00ab', '"').replace('\u00bb', '"')  # « »
+        json_str = json_str.replace('\u201a', "'").replace('\u201e', '"')  # ‚ „
+        # Curly apostrophes and quotes
+        json_str = json_str.replace('\u2032', "'").replace('\u2033', '"')  # ′ ″
+        
         import re
         # Match strings like "...."
         json_str = re.sub(r'"(?:[^"\\]|\\.)*"', escape_newlines_in_strings, json_str)
@@ -1237,6 +1255,10 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                 }
             ]
 
+        # Handle case where strokes is a single stroke object instead of an array
+        if isinstance(strokes, dict) and "x" in strokes and "y" in strokes:
+            strokes = [strokes]  # Convert single stroke to array
+
         # Validate strokes
         validated_strokes = []
         for stroke in strokes:
@@ -1261,7 +1283,6 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                     })
 
         if not validated_strokes:
-            print("not validated strokes")
             validated_strokes = [
                 {
                     "x": [400, 425, 450],  # Interpolated version
