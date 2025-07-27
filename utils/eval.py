@@ -267,6 +267,169 @@ def spatial_grouping_by(strokes, eps=50, min_samples=2, type="color"):
 
     return clusters_result
 
+def analyze_temporal_brush_color_correlation(drawing_data, max_lag=5):
+    """
+    Analyze temporal correlation patterns in (brush, color) pair sequences.
+    
+    Args:
+        drawing_data: Either the full JSON data (for custom/random) or stroke list (for human)
+        max_lag: Maximum lag to compute autocorrelation for
+        
+    Returns:
+        Dictionary containing temporal correlation metrics
+    """
+    
+    # Extract temporal sequence of (brush, color) pairs
+    sequence = []
+    
+    # Handle different data formats
+    if isinstance(drawing_data, dict) and "drawing_instructions" in drawing_data:
+        # Custom/random format with drawing_instructions
+        instructions = drawing_data["drawing_instructions"]
+        # Sort by step number to ensure temporal order
+        sorted_instructions = sorted(instructions, key=lambda x: x.get("step", 0))
+        
+        for instruction in sorted_instructions:
+            brush = instruction.get("brush", "unknown")
+            color = instruction.get("color", "#000000")
+            # Use color group instead of exact hex for better correlation
+            color_group = get_color_group(color)
+            sequence.append((brush, color_group))
+            
+    elif isinstance(drawing_data, dict) and "strokes" in drawing_data:
+        # Human format with direct strokes
+        for stroke in drawing_data["strokes"]:
+            brush = stroke.get("brush", "unknown")
+            color = stroke.get("color", "#000000")
+            color_group = get_color_group(color)
+            sequence.append((brush, color_group))
+            
+    elif isinstance(drawing_data, list):
+        # Already a list of strokes
+        for stroke in drawing_data:
+            brush = stroke.get("brush", "unknown")
+            color = stroke.get("color", "#000000")
+            color_group = get_color_group(color)
+            sequence.append((brush, color_group))
+    
+    if len(sequence) < 2:
+        return {
+            "sequence_length": len(sequence),
+            "unique_pairs": 0,
+            "temporal_metrics": {}
+        }
+    
+    # Create numerical encoding for (brush, color) pairs
+    unique_pairs = list(set(sequence))
+    pair_to_idx = {pair: idx for idx, pair in enumerate(unique_pairs)}
+    numerical_sequence = [pair_to_idx[pair] for pair in sequence]
+    
+    # Calculate temporal correlation metrics
+    results = {
+        "sequence_length": len(sequence),
+        "unique_pairs": len(unique_pairs),
+        "pair_list": unique_pairs,
+        "temporal_metrics": {}
+    }
+    
+    # 1. Autocorrelation at different lags
+    autocorrelations = []
+    for lag in range(1, min(max_lag + 1, len(numerical_sequence))):
+        if len(numerical_sequence) > lag:
+            # Calculate autocorrelation
+            series = np.array(numerical_sequence)
+            n = len(series)
+            
+            # Remove mean
+            series_centered = series - np.mean(series)
+            
+            # Calculate autocorrelation at this lag
+            if n > lag:
+                numerator = np.sum(series_centered[:-lag] * series_centered[lag:])
+                denominator = np.sum(series_centered**2)
+                
+                if denominator > 0:
+                    autocorr = numerator / denominator
+                    autocorrelations.append(autocorr)
+                else:
+                    autocorrelations.append(0.0)
+    
+    results["temporal_metrics"]["autocorrelations"] = autocorrelations
+    results["temporal_metrics"]["mean_autocorrelation"] = float(np.mean(autocorrelations)) if autocorrelations else 0.0
+    
+    # 2. Transition matrix analysis
+    if len(unique_pairs) > 1:
+        transition_matrix = np.zeros((len(unique_pairs), len(unique_pairs)))
+        
+        for i in range(len(numerical_sequence) - 1):
+            current_idx = numerical_sequence[i]
+            next_idx = numerical_sequence[i + 1]
+            transition_matrix[current_idx][next_idx] += 1
+        
+        # Normalize to get probabilities
+        row_sums = transition_matrix.sum(axis=1)
+        # Avoid division by zero
+        normalized_matrix = np.divide(transition_matrix, row_sums[:, np.newaxis], 
+                                    out=np.zeros_like(transition_matrix), 
+                                    where=row_sums[:, np.newaxis]!=0)
+        
+        # Calculate entropy of transition matrix (measure of predictability)
+        transition_entropy = 0.0
+        for i in range(len(unique_pairs)):
+            for j in range(len(unique_pairs)):
+                p = normalized_matrix[i][j]
+                if p > 0:
+                    transition_entropy -= p * np.log2(p)
+        
+        results["temporal_metrics"]["transition_entropy"] = float(transition_entropy)
+        results["temporal_metrics"]["max_possible_entropy"] = float(np.log2(len(unique_pairs)))
+        results["temporal_metrics"]["normalized_entropy"] = float(transition_entropy / np.log2(len(unique_pairs))) if len(unique_pairs) > 1 else 0.0
+    
+    # 3. Repetition patterns
+    # Count consecutive repetitions of the same (brush, color) pair
+    consecutive_repetitions = []
+    current_rep_length = 1
+    
+    for i in range(1, len(sequence)):
+        if sequence[i] == sequence[i-1]:
+            current_rep_length += 1
+        else:
+            if current_rep_length > 1:
+                consecutive_repetitions.append(current_rep_length)
+            current_rep_length = 1
+    
+    # Don't forget the last repetition if it goes to the end
+    if current_rep_length > 1:
+        consecutive_repetitions.append(current_rep_length)
+    
+    results["temporal_metrics"]["repetition_stats"] = {
+        "num_repetition_sequences": len(consecutive_repetitions),
+        "avg_repetition_length": float(np.mean(consecutive_repetitions)) if consecutive_repetitions else 0.0,
+        "max_repetition_length": int(max(consecutive_repetitions)) if consecutive_repetitions else 0,
+        "total_repeated_steps": int(sum(consecutive_repetitions)) if consecutive_repetitions else 0,
+        "repetition_ratio": float(sum(consecutive_repetitions) / len(sequence)) if consecutive_repetitions else 0.0
+    }
+    
+    # 4. Diversity over time (sliding window analysis)
+    window_size = min(5, len(sequence) // 2) if len(sequence) >= 4 else len(sequence)
+    if window_size >= 2:
+        window_diversities = []
+        for i in range(len(sequence) - window_size + 1):
+            window = sequence[i:i + window_size]
+            unique_in_window = len(set(window))
+            diversity = unique_in_window / window_size
+            window_diversities.append(diversity)
+        
+        results["temporal_metrics"]["diversity_stats"] = {
+            "window_size": window_size,
+            "avg_diversity": float(np.mean(window_diversities)),
+            "std_diversity": float(np.std(window_diversities)),
+            "min_diversity": float(min(window_diversities)),
+            "max_diversity": float(max(window_diversities))
+        }
+    
+    return results
+
 import json
 
 # Example usage with debugging
@@ -300,3 +463,25 @@ if __name__ == "__main__":
     brush_clusters = spatial_grouping_by(human_strokes["strokes"], type="brush")
     for brush, clusters in brush_clusters.items():
         print(f"Brush: {brush}, Number of clusters: {len(clusters)}")
+    
+    print("\n=== Temporal Brush-Color Correlation Analysis ===")
+    temporal_results = analyze_temporal_brush_color_correlation(human_strokes)
+    print(f"Sequence length: {temporal_results['sequence_length']}")
+    print(f"Unique (brush,color) pairs: {temporal_results['unique_pairs']}")
+    
+    temporal_metrics = temporal_results.get("temporal_metrics", {})
+    if "mean_autocorrelation" in temporal_metrics:
+        print(f"Mean autocorrelation: {temporal_metrics['mean_autocorrelation']:.3f}")
+    
+    if "normalized_entropy" in temporal_metrics:
+        print(f"Normalized transition entropy: {temporal_metrics['normalized_entropy']:.3f}")
+    
+    rep_stats = temporal_metrics.get("repetition_stats", {})
+    if rep_stats:
+        print(f"Repetition ratio: {rep_stats.get('repetition_ratio', 0):.3f}")
+        print(f"Max repetition length: {rep_stats.get('max_repetition_length', 0)}")
+    
+    div_stats = temporal_metrics.get("diversity_stats", {})
+    if div_stats:
+        print(f"Average tool diversity: {div_stats.get('avg_diversity', 0):.3f}")
+        print(f"Diversity std: {div_stats.get('std_diversity', 0):.3f}")
