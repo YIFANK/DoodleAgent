@@ -8,7 +8,8 @@ from PIL import Image
 # ==================================================
 # Color Grouping System
 # ==================================================
-
+from Fred import discrete_frechet
+import Fred as fred
 COLOR_PALETTE = {
     'keppel': {
         'DEFAULT': '#6BB9A4',
@@ -105,39 +106,118 @@ def get_color_group(hex_color: str) -> str:
     normalized_hex = normalize_hex_color(hex_color)
     return color_mapping.get(normalized_hex, normalized_hex)
 
-# ==================================================
-# Modified Analysis Functions
-# ==================================================
-
-def compute_hue_entropy(rgb_image: np.ndarray, bins: int = 36):
+def compute_stroke_statistics(strokes):
     """
-    Compute the entropy of the hue distribution from an RGB image.
-
-    Parameters:
-        rgb_image (np.ndarray): Input image in RGB format (H, W, 3)
-        bins (int): Number of bins for hue histogram (default 36 for 10-degree bins)
-
+    Calculate min/max/mean/std statistics for all stroke coordinates.
+    
+    Args:
+        strokes: List of stroke dictionaries with format:
+                {"stroke": {"x": [...], "y": [...]}, "color": "...", "brush": "..."}
+    
     Returns:
-        float: Hue entropy (in bits)
+        dict: Statistics containing bounding box and coordinate statistics
     """
-    print(rgb_image.shape)
-    # Convert RGB to HSV
-    hsv_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2HSV)
-    hue = hsv_image[:, :, 0]  # Hue channel (0 to 179 in OpenCV)
+    if not strokes:
+        return {}
+    
+    # Collect all x and y coordinates
+    all_x = []
+    all_y = []
+    
+    for stroke in strokes:
+        x_coords = stroke["stroke"]["x"]
+        y_coords = stroke["stroke"]["y"]
+        all_x.extend(x_coords)
+        all_y.extend(y_coords)
+    
+    all_x = np.array(all_x)
+    all_y = np.array(all_y)
+    
+    statistics = {
+        "x_stats": {
+            "min": float(np.min(all_x)),
+            "max": float(np.max(all_x)),
+            "mean": float(np.mean(all_x)),
+            "std": float(np.std(all_x))
+        },
+        "y_stats": {
+            "min": float(np.min(all_y)),
+            "max": float(np.max(all_y)),
+            "mean": float(np.mean(all_y)),
+            "std": float(np.std(all_y))
+        },
+        "bounding_box": {
+            "x_min": float(np.min(all_x)),
+            "x_max": float(np.max(all_x)),
+            "y_min": float(np.min(all_y)),
+            "y_max": float(np.max(all_y)),
+            "width": float(np.max(all_x) - np.min(all_x)),
+            "height": float(np.max(all_y) - np.min(all_y))
+        },
+        "total_points": len(all_x)
+    }
+    
+    return statistics
 
-    # Normalize hue to 0-360 degrees
-    hue_deg = hue.astype(np.float32) * 2  # [0, 360)
+def normalize_strokes(strokes):
+    """
+    Normalize stroke coordinates to [0,1] range based on bounding rectangle.
+    
+    Args:
+        strokes: List of stroke dictionaries
+        
+    Returns:
+        List of normalized stroke dictionaries with same structure
+    """
+    if not strokes:
+        return strokes
+    
+    # # Get bounding box statistics
+    # stats = compute_stroke_statistics(strokes)
+    # bbox = stats["bounding_box"]
+    #get the max bounding box for a single stroke
+    # Get min/max x and y coordinates across all strokes
+    x_min = float('inf')
+    x_max = float('-inf')
+    y_min = float('inf')
+    y_max = float('-inf')
+    width = 1e-6
+    height = 1e-6
+    for stroke in strokes:
+        x_coords = stroke["stroke"]["x"]
+        y_coords = stroke["stroke"]["y"]
+        x_min = min(x_min, min(x_coords))
+        x_max = max(x_max, max(x_coords))
+        y_min = min(y_min, min(y_coords))
+        y_max = max(y_max, max(y_coords))
+        width = max(width,x_max - x_min)
+        height = max(height,y_max - y_min)
 
-    # Compute histogram of hue
-    hist, _ = np.histogram(hue_deg, bins=bins, range=(0, 360))
-
-    # Normalize to probability distribution
-    prob = hist / np.sum(hist)
-
-    # Compute entropy
-    entropy = -np.sum(prob * np.log2(prob + 1e-8))  # Add epsilon to avoid log(0)
-
-    return entropy
+    
+    normalized_strokes = []
+    
+    for stroke in strokes:
+        # Normalize coordinates
+        x_coords = np.array(stroke["stroke"]["x"])
+        y_coords = np.array(stroke["stroke"]["y"])
+        
+        # Normalize so that each stroke is bounded in unit square
+        normalized_x = x_coords / width
+        normalized_y = y_coords / height
+        
+        # Create normalized stroke dictionary
+        normalized_stroke = {
+            "color": stroke["color"],
+            "brush": stroke["brush"],
+            "stroke": {
+                "x": normalized_x.tolist(),
+                "y": normalized_y.tolist()
+            }
+        }
+        
+        normalized_strokes.append(normalized_stroke)
+    
+    return normalized_strokes
 
 #calculate spatial correlation using frechet distance
 from frechetdist import frdist
@@ -153,7 +233,6 @@ def center_stroke(stroke):
     center_y = np.mean(y)
     centered = np.stack([x - center_x, y - center_y], axis=1)
     return centered
-
 def compute_frechet_distance(s1, s2):
     """Compute discrete Fréchet distance between two strokes (2D curves)"""
     # Extract coordinate arrays from stroke dictionaries
@@ -164,28 +243,29 @@ def compute_frechet_distance(s1, s2):
     x2 = np.array(s2["stroke"]["x"])
     y2 = np.array(s2["stroke"]["y"])
     stroke2 = np.stack([x2, y2], axis=1)
-    
-    # Make curves same length by interpolating the shorter one
-    if len(stroke1) > len(stroke2):
-        # Interpolate stroke2 to match stroke1 length
-        x = np.linspace(0, len(stroke2)-1, len(stroke1))
-        xp = np.arange(len(stroke2))
-        stroke2_interp = np.array([np.interp(x, xp, stroke2[:,i]) for i in range(stroke2.shape[1])]).T
-        return frdist(stroke1, stroke2_interp)
-    elif len(stroke2) > len(stroke1):
-        # Interpolate stroke1 to match stroke2 length
-        x = np.linspace(0, len(stroke1)-1, len(stroke2))
-        xp = np.arange(len(stroke1))
-        stroke1_interp = np.array([np.interp(x, xp, stroke1[:,i]) for i in range(stroke1.shape[1])]).T
-        return frdist(stroke1_interp, stroke2)
-    else:
-        return frdist(stroke1, stroke2)
-
+    #center the strokes
+    stroke1 = stroke1 - stroke_centroid(s1)
+    stroke2 = stroke2 - stroke_centroid(s2)
+    # print(stroke1,stroke2)
+    #convert to fred.curve
+    curve1 = fred.Curve(stroke1) 
+    curve2 = fred.Curve(stroke2)
+    d = discrete_frechet(curve1, curve2).value
+    return d
 # MODIFIED FUNCTION: Now groups by color families instead of exact hex colors
-def analyze_spatial_correlation(strokes):
+def analyze_spatial_correlation(strokes, normalize=True):
     """Compute pairwise Fréchet distances between all strokes"""
+    if len(strokes) < 2:
+        return 0.0
+    
+    # Optionally normalize strokes first for consistent comparison
+    if normalize:
+        analysis_strokes = normalize_strokes(strokes)
+    else:
+        analysis_strokes = strokes
+    
     distances = []
-    for s1, s2 in itertools.combinations(strokes, 2):
+    for s1, s2 in itertools.combinations(analysis_strokes, 2):
         d = compute_frechet_distance(s1, s2)
         distances.append(d)
     return np.mean(distances)
@@ -196,7 +276,7 @@ def stroke_centroid(stroke):
     return np.array([np.mean(x), np.mean(y)])
 
 # MODIFIED FUNCTION: Now can group by color families for color-based clustering
-def spatial_grouping_by(strokes, eps=50, min_samples=2, type="color"):
+def spatial_grouping_by(strokes, type="color", normalize=True):
     """
     Group strokes by spatial proximity for each color group/brush.
     eps: max distance for clustering (in pixels)
@@ -206,18 +286,55 @@ def spatial_grouping_by(strokes, eps=50, min_samples=2, type="color"):
     grouped = defaultdict(list)
     clusters_result = defaultdict(dict)
     
+    # Optionally normalize strokes first for consistent comparison
+    if normalize:
+        analysis_strokes = normalize_strokes(strokes)
+    else:
+        analysis_strokes = strokes
+    
     # Step 1: group by color group or brush
-    for stroke in strokes:
+    for stroke in analysis_strokes:
         if type == "color":
             # Use color group instead of exact color
             group_key = get_color_group(stroke["color"])
             grouped[group_key].append(stroke)
         elif type == "brush":
             grouped[stroke["brush"]].append(stroke)
+        elif type =="brush_color":
+            #group by brush and color
+            group_key = f"{stroke['brush']}_{get_color_group(stroke['color'])}"
+            grouped[group_key].append(stroke)
         else:
             raise ValueError(f"Invalid type: {type}")
+    #count the number of different colors and brushes
+    return grouped
+def color_count(strokes):
+    return len(set([stroke["color"] for stroke in strokes]))
+def brush_count(strokes):
+    return len(set([stroke["brush"] for stroke in strokes]))
+def brush_color_count(strokes):
+    return len(set([f"{stroke['brush']}_{get_color_group(stroke['color'])}" for stroke in strokes]))
+
+def analyze_type_metrics(strokes, type="color", metric="frechet", normalize=True):
+    """
+    Calculate mean distance between strokes in each group, no clustering.
     
-    # Calculate mean distance between strokes in each group, no clustering
+    Args:
+        strokes: List of stroke dictionaries
+        type: "color" or "brush" for grouping type
+        metric: "frechet" or "euclidean" for distance calculation
+        normalize: Whether to normalize strokes first
+        
+    Returns:
+        Dictionary with group analysis results
+    """
+    # Initialize results dictionary
+    clusters_result = defaultdict(dict)
+    
+    # First group by type (color or brush)
+    grouped = spatial_grouping_by(strokes, type=type, normalize=normalize)
+    
+    # Calculate mean distance between strokes in each group
     for group_key, strokes_list in grouped.items():
         distances = []
         if len(strokes_list) < 2:
@@ -228,7 +345,12 @@ def spatial_grouping_by(strokes, eps=50, min_samples=2, type="color"):
             
         for s1, s2 in itertools.combinations(strokes_list, 2):
             try:
-                d = compute_frechet_distance(s1, s2)
+                if metric == "frechet":
+                    d = compute_frechet_distance(s1, s2)
+                elif metric == "euclidean":
+                    d = compute_euclidean_distance(s1, s2)
+                else:
+                    raise ValueError(f"Invalid metric: {metric}")
                 distances.append(d)
             except Exception as e:
                 print(f"Error computing distance for group {group_key}: {e}")
@@ -241,15 +363,83 @@ def spatial_grouping_by(strokes, eps=50, min_samples=2, type="color"):
             clusters_result[group_key]["mean_distance"] = 0.0
             clusters_result[group_key]["num_pairs"] = 0
             
-    return clusters_result
+    return dict(clusters_result)
 
+def compute_euclidean_distance(s1, s2):
+    """Compute Euclidean distance between two strokes' centroids"""
+    x1 = np.array(s1["stroke"]["x"])
+    y1 = np.array(s1["stroke"]["y"])
+    x2 = np.array(s2["stroke"]["x"])
+    y2 = np.array(s2["stroke"]["y"])
+    centroid1 = np.array([np.mean(x1), np.mean(y1)])
+    centroid2 = np.array([np.mean(x2), np.mean(y2)])
+    d = np.linalg.norm(centroid1 - centroid2)
+    return d
+
+def if_same_color(s1, s2):
+    s1_color_group = get_color_group(s1["color"])
+    s2_color_group = get_color_group(s2["color"])
+    return s1_color_group == s2_color_group
+
+def if_same_brush(s1, s2):
+    return s1["brush"] == s2["brush"]
+
+def if_same_color_and_brush(s1, s2):
+    #use the color group instead of the exact color
+    return if_same_color(s1, s2) and if_same_brush(s1, s2)
+
+def compute_temporal_correlation(strokes, type="color_and_brush"):
+    """Compute temporal correlation between strokes"""
+    if len(strokes) < 2:
+        return 0.0
+    count = 0
+    for i in range(len(strokes) - 1):
+        if type == "color_and_brush":
+            if if_same_color_and_brush(strokes[i], strokes[i+1]):
+                count += 1
+        elif type == "color":
+            if if_same_color(strokes[i], strokes[i+1]):
+                count += 1
+        elif type == "brush":
+            if if_same_brush(strokes[i], strokes[i+1]):
+                count += 1
+        else:
+            raise ValueError(f"Invalid type: {type}")
+    return count / (len(strokes) - 1)
+def compute_smoothness(stroke):
+    """Compute smoothness of a stroke by calculating the angle between consecutive edges"""
+    angles = []
+    edges = []
+    for i in range(len(stroke["stroke"]["x"]) - 1):
+        edge = (stroke["stroke"]["x"][i+1] - stroke["stroke"]["x"][i], stroke["stroke"]["y"][i+1] - stroke["stroke"]["y"][i])
+        edges.append(edge)
+    for i in range(len(edges) - 1):
+        angle = np.dot(edges[i], edges[i+1]) / (np.linalg.norm(edges[i]) * np.linalg.norm(edges[i+1]))
+        angles.append(angle)
+    return np.mean(angles)
 if __name__ == "__main__":
     # Test the functions
     strokes = [
         {"stroke": {"x": [0, 1, 2, 3, 4], "y": [0, 1, 2, 3, 4]}, "color": "#6BB9A4", "brush": "marker"},
-        {"stroke": {"x": [5, 6, 7, 8, 9], "y": [5, 6, 7, 8, 9]}, "color": "#6BB9A4", "brush": "fountain"},
-        {"stroke": {"x": [10, 11, 12, 13, 14], "y": [0, 1, 2, 3, 4]}, "color": "#7FC9E1", "brush": "marker"},
+        {"stroke": {"x": [50, 60, 70, 80, 90], "y": [100, 110, 120, 130, 140]}, "color": "#6BB9A4", "brush": "fountain"},
+        {"stroke": {"x": [200, 210, 220, 230, 240], "y": [10, 20, 30, 40, 50]}, "color": "#7FC9E1", "brush": "marker"},
     ]
-    print("Spatial correlation:", analyze_spatial_correlation(strokes))
-    print("Color grouping:", spatial_grouping_by(strokes, type="color"))
-    print("Brush grouping:", spatial_grouping_by(strokes, type="brush"))
+    
+    print("=== Original Stroke Statistics ===")
+    stats = compute_stroke_statistics(strokes)
+    print("Stroke statistics:", stats)
+    
+    print("\n=== Normalized Strokes ===")
+    normalized = normalize_strokes(strokes)
+    normalized_stats = compute_stroke_statistics(normalized)
+    print("Normalized statistics:", normalized_stats)
+    
+    print("\n=== Analysis Results (Normalized) ===")
+    print("Spatial correlation:", analyze_spatial_correlation(strokes, normalize=True))
+    print("Color grouping:", spatial_grouping_by(strokes, type="color", normalize=True))
+    print("Brush grouping:", spatial_grouping_by(strokes, type="brush", normalize=True))
+    
+    print("\n=== Analysis Results (Raw/Unnormalized) ===")
+    print("Spatial correlation:", analyze_spatial_correlation(strokes, normalize=False))
+    print("Color grouping:", spatial_grouping_by(strokes, type="color", normalize=False))
+    print("Brush grouping:", spatial_grouping_by(strokes, type="brush", normalize=False))

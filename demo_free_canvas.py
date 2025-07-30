@@ -172,19 +172,45 @@ def main():
 
                     print(f"\n🎯 Running Custom Demo with {num_steps} steps, {num_repeats} time(s)...")
 
-                # Run the creative session and get the instructions
-                instructions = canvas.creative_session(num_iterations=num_steps, output_dir=repeat_output_dir)
-
-                # Save final canvas for custom demo
+                # Setup video capture for custom demo
                 repeat_ts = repeat_timestamp if num_repeats > 1 else timestamp
                 custom_output_dir = f"../output/custom/{repeat_ts}"
                 os.makedirs(custom_output_dir, exist_ok=True)
-                canvas.bridge.capture_canvas(f"{custom_output_dir}/{repeat_ts}.png")
                 
-                # Export session logs as JSON to the custom output directory
-                print("📝 Saving session logs as JSON...")
-                session_name = f"custom_demo_{repeat_ts}_repeat_{repeat_run + 1}"
-                canvas.save_complete_session_data(custom_output_dir, session_name, instructions)
+                print("🎥 Video recording enabled - capturing the entire custom session!")
+                video_output = f"{custom_output_dir}/custom_session_{repeat_ts}_repeat_{repeat_run + 1}.mp4"
+                
+                # Ensure video capture is stopped before starting new one
+                try:
+                    canvas.bridge.stop_video_capture()
+                except:
+                    pass  # Ignore if no video was running
+                    
+                canvas.bridge.start_video_capture(video_output)
+
+                try:
+                    # Run the creative session and get the instructions
+                    instructions = canvas.creative_session(num_iterations=num_steps, output_dir=repeat_output_dir)
+
+                    # Save final canvas for custom demo
+                    canvas.bridge.capture_canvas(f"{custom_output_dir}/{repeat_ts}.png")
+                    
+                    # Export session logs as JSON to the custom output directory
+                    print("📝 Saving session logs as JSON...")
+                    session_name = f"custom_demo_{repeat_ts}_repeat_{repeat_run + 1}"
+                    canvas.save_complete_session_data(custom_output_dir, session_name, instructions)
+                    
+                    if repeat_run == num_repeats - 1:
+                        print(f"\n🎉 Custom session completed!")
+                        print(f"Final artwork saved as: {custom_output_dir}/{repeat_ts}.png")
+                        print(f"🎬 Video saved as: {video_output}")
+
+                finally:
+                    # Stop video capture with error handling
+                    try:
+                        canvas.bridge.stop_video_capture()
+                    except Exception as e:
+                        print(f"Warning: Error stopping video capture: {e}")
                 
                 # Also close and reset the session for the next repeat
                 if repeat_run < num_repeats - 1:
@@ -207,11 +233,14 @@ def main():
 
                     print(f"\n🎯 Running Mood-Based Demo ({mood}) with {num_iterations} strokes, {num_repeats} time(s)...")
 
+                # Setup standardized output directory for mood demo (same format as custom demo)
+                repeat_ts = repeat_timestamp if num_repeats > 1 else timestamp
+                mood_output_dir = f"../output/custom/{repeat_ts}"
+                os.makedirs(mood_output_dir, exist_ok=True)
+
                 print("🎥 Video recording enabled - capturing the entire mood-based session!")
-                # Get current timestamp for this repeat run
-                current_ts = repeat_timestamp if num_repeats > 1 else timestamp
                 # Start video capture for mood-based session  
-                video_output = f"{repeat_output_dir}/mood_session_{current_ts}_repeat_{repeat_run + 1}.mp4"
+                video_output = f"{mood_output_dir}/mood_{mood}_{repeat_ts}_repeat_{repeat_run + 1}.mp4"
                 
                 # Ensure video capture is stopped before starting new one
                 try:
@@ -244,17 +273,17 @@ def main():
                         for i, stroke in enumerate(instruction.strokes):
                             print(f"   {i+1}. {stroke['x']}, {stroke['y']}")
 
-                    # Save final mood-based artwork
-                    canvas.bridge.capture_canvas(f"{repeat_output_dir}/mood_{mood}.png")
+                    # Save final mood-based artwork to standardized directory
+                    canvas.bridge.capture_canvas(f"{mood_output_dir}/mood_{mood}_{repeat_ts}.png")
                     
-                    # Save JSON logs for mood-based session
+                    # Save JSON logs for mood-based session to standardized directory
                     print("📝 Saving mood-based session logs as JSON...")
-                    session_name = f"mood_{mood}_{current_ts}_repeat_{repeat_run + 1}"
-                    canvas.save_complete_session_data(repeat_output_dir, session_name, mood_instructions)
+                    session_name = f"mood_{mood}_{repeat_ts}_repeat_{repeat_run + 1}"
+                    canvas.save_complete_session_data(mood_output_dir, session_name, mood_instructions)
                     
                     if repeat_run == num_repeats - 1:
                         print(f"\n🎉 Mood-based session completed!")
-                        print(f"Final artwork saved as: {repeat_output_dir}/mood_{mood}.png")
+                        print(f"Final artwork saved as: {mood_output_dir}/mood_{mood}_{repeat_ts}.png")
                         print(f"🎬 Video saved as: {video_output}")
 
                 finally:
@@ -268,12 +297,6 @@ def main():
                 if repeat_run < num_repeats - 1:
                     canvas.agent.close_session_logs()
                     canvas.agent.reset_stroke_history()
-
-                # Save overall final mood artwork
-                if repeat_run == num_repeats - 1:
-                    final_ts = repeat_timestamp if num_repeats > 1 else timestamp
-                    os.makedirs(f"../output/mood/{mood}_{final_ts}", exist_ok=True)
-                    canvas.bridge.capture_canvas(f"../output/mood/{mood}_{final_ts}/{final_ts}.png")
 
             elif choice == "6":
                 # Abstract demo

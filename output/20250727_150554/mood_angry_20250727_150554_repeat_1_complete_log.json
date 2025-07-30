@@ -1,0 +1,445 @@
+{
+  "session_info": {
+    "session_name": "mood_angry_20250727_150554_repeat_1",
+    "total_instructions": 15,
+    "export_timestamp": "2025-07-27T15:07:44.342469",
+    "model_type": "claude-3-5-sonnet-20241022"
+  },
+  "drawing_instructions": [
+    {
+      "step": 1,
+      "brush": "marker",
+      "color": "#FF1717",
+      "strokes": [
+        {
+          "x": [
+            425,
+            525,
+            625
+          ],
+          "y": [
+            250,
+            150,
+            50
+          ]
+        },
+        {
+          "x": [
+            425,
+            325,
+            225
+          ],
+          "y": [
+            250,
+            150,
+            50
+          ]
+        },
+        {
+          "x": [
+            425,
+            525,
+            625
+          ],
+          "y": [
+            250,
+            350,
+            450
+          ]
+        },
+        {
+          "x": [
+            425,
+            325,
+            225
+          ],
+          "y": [
+            250,
+            350,
+            450
+          ]
+        },
+        {
+          "x": [
+            425,
+            625,
+            825
+          ],
+          "y": [
+            250,
+            250,
+            250
+          ]
+        },
+        {
+          "x": [
+            425,
+            225,
+            25
+          ],
+          "y": [
+            250,
+            250,
+            250
+          ]
+        }
+      ],
+      "thinking": "I'm feeling angry, so I want to start with sharp, jagged lines that burst from the center like an explosion of rage. I'll use the marker brush with a fierce red color to create angular, aggressive strokes that radiate outward from the middle of the canvas (425,250). This will form the core of my angry expression, with lines shooting out in different directions like a burst of fury.",
+      "timestamp": "2025-07-27T15:07:44.342401"
+    },
+    {
+      "step": 2,
+      "brush": "marker",
+      "color": "#4B0000",
+      "strokes": [
+        {
+          "x": [
+            325,
+            425,
+            525
+          ],
+          "y": [
+            150,
+            250,
+            150
+          ]
+        }
+      ],
+      "thinking": "I see a strong red X-shaped pattern with radiating lines that expresses initial anger. To intensify this feeling of rage, I'll add powerful, bold curved strokes that create a chaotic, turbulent effect around the central intersection. Using a darker red will emphasize the intensity of the anger, making the emotion feel more visceral and intense. I'll draw curved lines that swirl aggressively around the center point (425,250), like a storm of fury.",
+      "timestamp": "2025-07-27T15:07:44.342427"
+    },
+    {
+      "step": 3,
+      "brush": "wiggle",
+      "color": "#4B0000",
+      "strokes": [
+        {
+          "x": [
+            425,
+            475,
+            400,
+            450,
+            400,
+            475
+          ],
+          "y": [
+            250,
+            200,
+            225,
+            275,
+            300,
+            250
+          ]
+        }
+      ],
+      "thinking": "I see a bold red X pattern with some curved elements expressing anger. To intensify this feeling of rage and frustration, I want to add aggressive, jagged strokes with the wiggle brush that look like electric sparks or lightning bolts of fury emanating from the central point. I'll use a dark red color to make it feel more intense and threatening, placing these angry zigzags around the intersection point to create a sense of explosive energy.",
+      "timestamp": "2025-07-27T15:07:44.342431"
+    },
+    {
+      "step": 4,
+      "brush": "wiggle",
+      "color": "#970000",
+      "strokes": [
+        {
+          "x": [
+            375,
+            325,
+            400,
+            350,
+            400,
+            325
+          ],
+          "y": [
+            250,
+            200,
+            225,
+            275,
+            300,
+            250
+          ]
+        }
+      ],
+      "thinking": "The image shows an intense red X with some chaotic elements, but to really express my burning anger, I want to add more aggressive, sharp elements. I'll use the wiggle brush to create jagged, lightning-like strokes on the opposite side of the center to balance the existing wiggle marks. These erratic lines will symbolize the uncontrollable nature of rage, making the whole composition feel more volatile and explosive.",
+      "timestamp": "2025-07-27T15:07:44.342434"
+    },
+    {
+      "step": 5,
+      "brush": "spray",
+      "color": "default",
+      "strokes": [
+        {
+          "x": [
+            375,
+            425,
+            475,
+            425,
+            375,
+            425,
+            475
+          ],
+          "y": [
+            200,
+            250,
+            300,
+            250,
+            300,
+            200,
+            200
+          ]
+        }
+      ],
+      "thinking": "The canvas shows an intense red X with chaotic wiggly elements at the center. To amplify this explosive anger, I want to add more aggressive elements. I'll use the spray brush to create a burst of scattered dots around the central intersection point, like shrapnel exploding outward from the point of impact. This will add a sense of violent energy dispersing from the center of the rage, making the whole composition feel more volatile and destructive.",
+      "timestamp": "2025-07-27T15:07:44.342437"
+    },
+    {
+      "step": 6,
+      "brush": "marker",
+      "color": "#5D0000",
+      "strokes": [
+        {
+          "x": [
+            425,
+            500,
+            575
+          ],
+          "y": [
+            250,
+            175,
+            100
+          ]
+        }
+      ],
+      "thinking": "Looking at the intense red X with its chaotic center and spray pattern, I want to intensify the feeling of rage by adding more explosive, dark elements. I'll use the marker brush with the darkest red shade to create heavy, aggressive strokes that radiate from the center, overlapping the existing pattern. These bold strokes will represent the deepening of anger, like rage building up to a breaking point. I'll position them slightly offset from the existing lines to create a sense of violent motion and instability.",
+      "timestamp": "2025-07-27T15:07:44.342440"
+    },
+    {
+      "step": 7,
+      "brush": "marker",
+      "color": "#5D0000",
+      "strokes": [
+        {
+          "x": [
+            425,
+            500,
+            575
+          ],
+          "y": [
+            250,
+            325,
+            400
+          ]
+        }
+      ],
+      "thinking": "The canvas shows an intense red X with chaotic elements and dark explosive center. To further express my seething anger, I want to add another bold, heavy stroke with the darkest red, creating an aggressive downward slash that reinforces the violent energy. I'll draw this from the center towards the bottom right, making it thicker and more intense than the previous strokes to show escalating rage.",
+      "timestamp": "2025-07-27T15:07:44.342442"
+    },
+    {
+      "step": 8,
+      "brush": "marker",
+      "color": "#4B0000",
+      "strokes": [
+        {
+          "x": [
+            425,
+            350,
+            275
+          ],
+          "y": [
+            250,
+            175,
+            100
+          ]
+        }
+      ],
+      "thinking": "The canvas shows a powerful angry 'X' with chaotic elements, spray patterns, and dark slashes. To further intensify this rage, I want to add another thick, aggressive stroke with the darkest red in the opposite direction, completing the sense of violent symmetry. This will balance the previous dark strokes and make the whole composition feel like it's about to explode with fury. I'll draw from the center towards the upper left, mirroring the existing dark slashes.",
+      "timestamp": "2025-07-27T15:07:44.342445"
+    },
+    {
+      "step": 9,
+      "brush": "marker",
+      "color": "#5D0000",
+      "strokes": [
+        {
+          "x": [
+            425,
+            350,
+            275
+          ],
+          "y": [
+            250,
+            325,
+            400
+          ]
+        }
+      ],
+      "thinking": "The canvas shows an intense angry composition with a central X and chaotic elements. To further express this explosive rage, I'll add one final dark red marker stroke from center to lower left, completing the radial pattern of fury. This will balance the dark slashes and make the whole composition feel like a violent starburst of anger emanating from a central point of rage.",
+      "timestamp": "2025-07-27T15:07:44.342447"
+    },
+    {
+      "step": 10,
+      "brush": "marker",
+      "color": "#FF7878",
+      "strokes": [
+        {
+          "x": [
+            50,
+            425,
+            800
+          ],
+          "y": [
+            250,
+            250,
+            250
+          ]
+        }
+      ],
+      "thinking": "Looking at the explosive, chaotic X pattern with its dark center and radiating lines, I want to amplify the feeling of contained rage by adding a sharp, thick horizontal line that feels like it's cutting across everything. This represents the breaking point of anger, like a pressure line about to snap. I'll use the marker with Light Red to create a bold stroke that spans most of the canvas width, intersecting with the existing pattern to create more tension and conflict.",
+      "timestamp": "2025-07-27T15:07:44.342450"
+    },
+    {
+      "step": 11,
+      "brush": "marker",
+      "color": "#FF7878",
+      "strokes": [
+        {
+          "x": [
+            50,
+            425,
+            800
+          ],
+          "y": [
+            270,
+            270,
+            270
+          ]
+        }
+      ],
+      "thinking": "The canvas now shows an intense, explosive pattern centered around a furious X with radiating dark lines and a bold horizontal stroke. To intensify this expression of rage even further, I want to add another aggressive horizontal line slightly offset from the existing one, creating a sense of violent vibration or trembling with anger. I'll use the marker with Light Red again, but position this line just below the previous one to suggest an unstable, quivering fury that can barely be contained.",
+      "timestamp": "2025-07-27T15:07:44.342452"
+    },
+    {
+      "step": 12,
+      "brush": "marker",
+      "color": "#5D0000",
+      "strokes": [
+        {
+          "x": [
+            100,
+            200,
+            300
+          ],
+          "y": [
+            50,
+            100,
+            50
+          ]
+        }
+      ],
+      "thinking": "The canvas shows an intense pattern of anger with crossed lines, chaotic center, and vibrating horizontal strokes. To amplify this fury even further, I want to add a set of sharp, aggressive marker strokes in the darkest red (#5D0000) that look like they're slashing violently across the top of the composition. These diagonal slashes will be quick, forceful strokes that express uncontrolled rage, creating a sense of furious motion above the central chaos. I'll make them shorter but more numerous, like quick angry cuts through the air.",
+      "timestamp": "2025-07-27T15:07:44.342454"
+    },
+    {
+      "step": 13,
+      "brush": "marker",
+      "color": "#5D0000",
+      "strokes": [
+        {
+          "x": [
+            550,
+            650,
+            750
+          ],
+          "y": [
+            450,
+            400,
+            450
+          ]
+        }
+      ],
+      "thinking": "The canvas is filled with an explosive, chaotic pattern of anger, but I want to add even more aggressive energy to it. I'll use the marker with Tea Rose Dark's darkest shade (#5D0000) to create quick, violent diagonal slashes across the bottom right corner - like angry claw marks tearing through the composition. These sharp, aggressive strokes will mirror the top left slashes but feel more intense and uncontrolled, representing building rage that can't be contained.",
+      "timestamp": "2025-07-27T15:07:44.342456"
+    },
+    {
+      "step": 14,
+      "brush": "wiggle",
+      "color": "#5D0000",
+      "strokes": [
+        {
+          "x": [
+            50,
+            75,
+            100,
+            125,
+            150,
+            125,
+            100,
+            75,
+            50
+          ],
+          "y": [
+            50,
+            75,
+            50,
+            75,
+            50,
+            75,
+            50,
+            75,
+            50
+          ]
+        },
+        {
+          "x": [
+            700,
+            725,
+            750,
+            775,
+            800,
+            775,
+            750,
+            725,
+            700
+          ],
+          "y": [
+            450,
+            425,
+            450,
+            425,
+            450,
+            425,
+            450,
+            425,
+            450
+          ]
+        }
+      ],
+      "thinking": "Looking at the intensely chaotic composition with its explosive center and violent slashes, I want to add more aggressive wiggly lines around the edges that feel like angry scribbles closing in. I'll use the wiggle brush with the darkest red to create frenzied, turbulent strokes in the corners that feel like they're violently pushing inward toward the center. This will make the whole composition feel more claustrophobic and rage-filled, like anger is consuming everything from all sides.",
+      "timestamp": "2025-07-27T15:07:44.342459"
+    },
+    {
+      "step": 15,
+      "brush": "spray",
+      "color": "default",
+      "strokes": [
+        {
+          "x": [
+            375,
+            425,
+            475,
+            425,
+            375
+          ],
+          "y": [
+            225,
+            250,
+            225,
+            200,
+            225
+          ]
+        }
+      ],
+      "thinking": "Looking at this explosive composition of rage, I want to add chaotic spray patterns around the intersection points of the X to make it feel like the anger is literally shattering and bursting at these pressure points. The spray brush will create a scattered, violent texture that suggests the anger is becoming unstable and explosive. I'll focus these bursts where the lines cross to emphasize the points of maximum tension.",
+      "timestamp": "2025-07-27T15:07:44.342465"
+    }
+  ]
+}

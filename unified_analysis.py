@@ -10,9 +10,15 @@ import glob
 import argparse
 from typing import List, Dict, Any, Tuple
 import numpy as np
+import matplotlib.pyplot as plt
+from collections import defaultdict
 from utils.simple_eval import (
     analyze_spatial_correlation, 
-    spatial_grouping_by
+    analyze_type_metrics,
+    compute_stroke_statistics,
+    compute_temporal_correlation,
+    color_count,
+    brush_count
 )
 
 def filter_directories_after_timestamp(base_dir: str, threshold_timestamp: str) -> List[str]:
@@ -134,45 +140,13 @@ def run_eval_analysis(strokes: List[Dict[str, Any]], file_id: str) -> Dict[str, 
     """
     results = {
         "file_id": file_id,
-        "total_strokes": len(strokes)
+        "total_strokes": len(strokes),
+        "temporal_correlation": compute_temporal_correlation(strokes, type="color_and_brush"),
+        "temporal_correlation_color": compute_temporal_correlation(strokes, type="color"),
+        "temporal_correlation_brush": compute_temporal_correlation(strokes, type="brush"),
+        "color_count": color_count(strokes),
+        "brush_count": brush_count(strokes)
     }
-    
-    # Spatial correlation analysis using analyze_spatial_correlation
-    try:
-        spatial_correlation = analyze_spatial_correlation(strokes)
-        results["spatial_correlation"] = {
-            "mean_distance": float(spatial_correlation)
-        }
-    except Exception as e:
-        print(f"Error in spatial correlation analysis for {file_id}: {e}")
-        results["spatial_correlation"] = {}
-    
-    # Color-based spatial grouping using spatial_grouping_by
-    try:
-        color_clusters = spatial_grouping_by(strokes, type="color")
-        results["color_clustering"] = {}
-        for color_group, cluster_info in color_clusters.items():
-            results["color_clustering"][color_group] = {
-                "mean_distance": float(cluster_info["mean_distance"]),
-                "num_pairs": cluster_info["num_pairs"]
-            }
-    except Exception as e:
-        print(f"Error in color clustering for {file_id}: {e}")
-        results["color_clustering"] = {}
-    
-    # Brush-based spatial grouping using spatial_grouping_by
-    try:
-        brush_clusters = spatial_grouping_by(strokes, type="brush")
-        results["brush_clustering"] = {}
-        for brush, cluster_info in brush_clusters.items():
-            results["brush_clustering"][brush] = {
-                "mean_distance": float(cluster_info["mean_distance"]),
-                "num_pairs": cluster_info["num_pairs"]
-            }
-    except Exception as e:
-        print(f"Error in brush clustering for {file_id}: {e}")
-        results["brush_clustering"] = {}
-    
     return results
 
 def get_files_to_process(dataset_type: str, base_dir: str, threshold_timestamp: str = None) -> List[Tuple[str, str]]:
@@ -192,6 +166,9 @@ def get_files_to_process(dataset_type: str, base_dir: str, threshold_timestamp: 
     if dataset_type == "custom":
         # Get directories after threshold timestamp
         valid_dirs = filter_directories_after_timestamp(base_dir, threshold_timestamp or "20250726_003439")
+        
+        # Only take the last 10 directories (most recent)
+        valid_dirs = valid_dirs[-10:] if len(valid_dirs) > 10 else valid_dirs
         
         for dir_path in valid_dirs:
             dir_name = os.path.basename(dir_path)
@@ -215,177 +192,158 @@ def get_files_to_process(dataset_type: str, base_dir: str, threshold_timestamp: 
     
     return files_to_process
 
-def analyze_dataset(dataset_type: str, base_dir: str, output_dir: str, threshold_timestamp: str = None) -> List[Dict[str, Any]]:
-    """
-    Analyze a complete dataset (custom, human, or random).
+def main():
+    """Run analysis on sample files from each dataset"""
+    datasets = {
+        "human": "../human/json",
+        "custom": "output", 
+        "random": "../random/json"
+    }
     
-    Args:
-        dataset_type: "custom", "human", or "random"
-        base_dir: Directory containing the data
-        output_dir: Directory to save results
-        threshold_timestamp: For custom data, filter by timestamp
-        
-    Returns:
-        List of analysis results
-    """
-    print(f"=== Analyzing {dataset_type.upper()} Dataset ===")
-    
-    # Get files to process
-    files_to_process = get_files_to_process(dataset_type, base_dir, threshold_timestamp)
-    print(f"Found {len(files_to_process)} files to process")
-    
-    if not files_to_process:
-        print(f"No files found for {dataset_type} dataset")
-        return []
+    print("Dataset Comparison Analysis")
+    print("=" * 50)
     
     all_results = []
     
-    for json_file, file_id in files_to_process:
-        print(f"Processing: {file_id}")
+    for dataset_type, base_dir in datasets.items():
+        print(f"\n{dataset_type.upper()} Dataset:")
+        print("-" * 20)
         
         try:
-            # Load and preprocess JSON data
-            with open(json_file, 'r') as f:
-                json_data = json.load(f)
+            # Get 3 sample files
+            files = get_files_to_process(dataset_type, base_dir)[:3]
             
-            strokes = preprocess_json_to_stroke_format(json_data, dataset_type)
-            print(f"  Extracted {len(strokes)} strokes")
+            for file_path, file_id in files:
+                # Load and preprocess JSON
+                with open(file_path, 'r') as f:
+                    json_data = json.load(f)
+                
+                strokes = preprocess_json_to_stroke_format(json_data, dataset_type)
+                
+                if strokes:
+                    result = run_eval_analysis(strokes, file_id)
+                    all_results.append({**result, "dataset_type": dataset_type})
+                    
+                    print(f"{file_id}: {result['total_strokes']} strokes, "
+                        f"temporal_corr={result['temporal_correlation']:.3f}, temporal_corr_color={result['temporal_correlation_color']:.3f}, temporal_corr_brush={result['temporal_correlation_brush']:.3f},     "
+                        f"colors={result['color_count']}, brushes={result['brush_count']}")
+        
+        except Exception as e:
+            print(f"Error processing {dataset_type}: {e}")
+    
+    # Summary
+    print("\n" + "=" * 50)
+    print("SUMMARY")
+    print("=" * 50)
+    by_dataset = defaultdict(list)
+    for r in all_results:
+        by_dataset[r['dataset_type']].append(r)
+    
+    for dataset_type in ["human", "custom", "random"]:
+        if dataset_type in by_dataset:
+            results = by_dataset[dataset_type]
+            avg_temporal = np.mean([r['temporal_correlation'] for r in results])
+            avg_temporal_color = np.mean([r['temporal_correlation_color'] for r in results])
+            avg_temporal_brush = np.mean([r['temporal_correlation_brush'] for r in results])
+            avg_colors = np.mean([r['color_count'] for r in results])
+            avg_brushes = np.mean([r['brush_count'] for r in results])
+            print(f"{dataset_type.upper()}: temporal_corr={avg_temporal:.3f}, temporal_corr_color={avg_temporal_color:.3f}, temporal_corr_brush={avg_temporal_brush:.3f}, "
+                  f"avg_colors={avg_colors:.1f}, avg_brushes={avg_brushes:.1f}")
+
+def analyze_all_files():
+    """Analyze ALL files in each dataset and compute mean/std statistics"""
+    datasets = {
+        "human": "../human/json",
+        "custom": "output", 
+        "random": "../random/json"
+    }
+    
+    print("Complete Dataset Analysis (All Files)")
+    print("=" * 60)
+    
+    summary_stats = {}
+    
+    for dataset_type, base_dir in datasets.items():
+        print(f"\nProcessing ALL {dataset_type.upper()} files...")
+        
+        try:
+            # Get ALL files (remove [:3] limit)
+            all_files = get_files_to_process(dataset_type, base_dir)
             
-            if len(strokes) == 0:
-                print(f"  No strokes found in {file_id}")
-                continue
+            results = []
+            processed = 0
             
-            # Run eval analysis
-            results = run_eval_analysis(strokes, file_id)
+            for file_path, file_id in all_files:
+                try:
+                    with open(file_path, 'r') as f:
+                        json_data = json.load(f)
+                    
+                    strokes = preprocess_json_to_stroke_format(json_data, dataset_type)
+                    
+                    if strokes:
+                        result = run_eval_analysis(strokes, file_id)
+                        results.append(result)
+                        processed += 1
+                        
+                except Exception as e:
+                    print(f"  Error processing {file_id}: {e}")
+                    continue
             
-            all_results.append(results)
-            print(f"  Analysis complete for {file_id}")
+            if results:
+                # Calculate statistics
+                temporal_vals = [r['temporal_correlation'] for r in results]
+                temporal_color_vals = [r['temporal_correlation_color'] for r in results]
+                temporal_brush_vals = [r['temporal_correlation_brush'] for r in results]
+                color_vals = [r['color_count'] for r in results]
+                brush_vals = [r['brush_count'] for r in results]
+                stroke_vals = [r['total_strokes'] for r in results]
+                
+                stats = {
+                    'files_processed': processed,
+                    'temporal_correlation': {'mean': np.mean(temporal_vals), 'std': np.std(temporal_vals)},
+                    'temporal_correlation_color': {'mean': np.mean(temporal_color_vals), 'std': np.std(temporal_color_vals)},
+                    'temporal_correlation_brush': {'mean': np.mean(temporal_brush_vals), 'std': np.std(temporal_brush_vals)},
+                    
+                    'color_count': {'mean': np.mean(color_vals), 'std': np.std(color_vals)},
+                    'brush_count': {'mean': np.mean(brush_vals), 'std': np.std(brush_vals)},
+                    'total_strokes': {'mean': np.mean(stroke_vals), 'std': np.std(stroke_vals)}
+                }
+                
+                summary_stats[dataset_type] = stats
+                
+                print(f"  Processed {processed} files")
+                print(f"  Temporal correlation: {stats['temporal_correlation']['mean']:.3f} ± {stats['temporal_correlation']['std']:.3f}")
+                print(f"  Temporal correlation color: {stats['temporal_correlation_color']['mean']:.3f} ± {stats['temporal_correlation_color']['std']:.3f}")
+                print(f"  Temporal correlation brush: {stats['temporal_correlation_brush']['mean']:.3f} ± {stats['temporal_correlation_brush']['std']:.3f}")
+                print(f"  Color count: {stats['color_count']['mean']:.1f} ± {stats['color_count']['std']:.1f}")
+                print(f"  Brush count: {stats['brush_count']['mean']:.1f} ± {stats['brush_count']['std']:.1f}")
+                print(f"  Strokes per drawing: {stats['total_strokes']['mean']:.1f} ± {stats['total_strokes']['std']:.1f}")
             
         except Exception as e:
-            print(f"  Error processing {file_id}: {e}")
-            continue
+            print(f"  Error processing {dataset_type} dataset: {e}")
     
-    # Save results
-    if all_results:
-        output_file = os.path.join(output_dir, f"{dataset_type}_eval_results.json")
-        with open(output_file, 'w') as f:
-            json.dump(all_results, f, indent=2)
-        print(f"Results saved to: {output_file}")
-        
-        # Print summary statistics
-        print(f"\n=== {dataset_type.upper()} DATA STATISTICS ===")
-        print(f"Total files processed: {len(all_results)}")
-        print(f"Average strokes per file: {np.mean([r['total_strokes'] for r in all_results]):.2f}")
-        
-        # Spatial correlation statistics
-        spatial_corrs = [r.get("spatial_correlation", {}).get("mean_distance") 
-                        for r in all_results if r.get("spatial_correlation", {}).get("mean_distance") is not None]
-        if spatial_corrs:
-            print(f"Average spatial correlation: {np.mean(spatial_corrs):.3f} ± {np.std(spatial_corrs):.3f}")
-        
-        # Color clustering statistics
-        color_distances = []
-        for r in all_results:
-            for color_group, info in r.get("color_clustering", {}).items():
-                if info.get("mean_distance") is not None:
-                    color_distances.append(info["mean_distance"])
-        if color_distances:
-            print(f"Average color group distance: {np.mean(color_distances):.3f} ± {np.std(color_distances):.3f}")
-        
-        # Brush clustering statistics  
-        brush_distances = []
-        for r in all_results:
-            for brush, info in r.get("brush_clustering", {}).items():
-                if info.get("mean_distance") is not None:
-                    brush_distances.append(info["mean_distance"])
-        if brush_distances:
-            print(f"Average brush distance: {np.mean(brush_distances):.3f} ± {np.std(brush_distances):.3f}")
+    # Final comparison table
+    print("\n" + "=" * 60)
+    print("DATASET COMPARISON (mean ± std)")
+    print("=" * 60)
+    print(f"{'Dataset':<10} {'Files':<6} {'Temporal Corr':<15} {'Temporal Color':<15} {'Temporal Brush':<15} {'Colors':<12} {'Brushes':<12}")
+    print("-" * 60)
     
-    return all_results
-
-def main():
-    """Main function with command line argument support."""
-    parser = argparse.ArgumentParser(description="Unified analysis script for custom, human, and random datasets")
-    parser.add_argument("--dataset", choices=["custom", "human", "random", "all"], default="all",
-                       help="Which dataset to analyze (default: all)")
-    parser.add_argument("--custom-dir", default="../output/custom",
-                       help="Directory containing custom output data")
-    parser.add_argument("--human-dir", default="../human/json", 
-                       help="Directory containing human JSON data")
-    parser.add_argument("--random-dir", default="../random/json",
-                       help="Directory containing random JSON data")
-    parser.add_argument("--output-dir", default="../output/stats",
-                       help="Directory to save analysis results")
-    parser.add_argument("--threshold", default="20250726_003439",
-                       help="Timestamp threshold for custom data")
+    for dataset_type in ["human", "custom", "random"]:
+        if dataset_type in summary_stats:
+            s = summary_stats[dataset_type]
+            print(f"{dataset_type.upper():<10} {s['files_processed']:<6} "
+                  f"{s['temporal_correlation']['mean']:.3f}±{s['temporal_correlation']['std']:.3f}     "
+                  f"{s['temporal_correlation_color']['mean']:.3f}±{s['temporal_correlation_color']['std']:.3f}     "
+                  f"{s['temporal_correlation_brush']['mean']:.3f}±{s['temporal_correlation_brush']['std']:.3f}     "
+                  f"{s['color_count']['mean']:.1f}±{s['color_count']['std']:.1f}      "
+                  f"{s['brush_count']['mean']:.1f}±{s['brush_count']['std']:.1f}")
     
-    args = parser.parse_args()
-    
-    # Create output directory if it doesn't exist
-    os.makedirs(args.output_dir, exist_ok=True)
-    
-    results = {}
-    
-    # Analyze datasets based on arguments
-    if args.dataset in ["custom", "all"]:
-        custom_results = analyze_dataset("custom", args.custom_dir, args.output_dir, args.threshold)
-        results["custom"] = custom_results
-    
-    if args.dataset in ["human", "all"]:
-        human_results = analyze_dataset("human", args.human_dir, args.output_dir)
-        results["human"] = human_results
-    
-    if args.dataset in ["random", "all"]:
-        random_results = analyze_dataset("random", args.random_dir, args.output_dir)
-        results["random"] = random_results
-    
-    print(f"\n=== Analysis Complete ===")
-    print(f"Results saved in: {args.output_dir}")
-    
-    return results
-
-def analyze_single_examples():
-    """Analyze a single example from each dataset type for comparison."""
-    print("\n=== Analyzing Single Examples ===")
-    
-    results = {}
-    
-    # Custom dataset example
-    custom_dir = "../output/custom"
-    if os.path.exists(custom_dir):
-        custom_files = get_files_to_process("custom", custom_dir)
-        if custom_files:
-            file_path, file_id = custom_files[0]  # Get first file
-            with open(file_path) as f:
-                json_data = json.load(f)
-            strokes = preprocess_json_to_stroke_format(json_data, "custom")
-            results["custom"] = run_eval_analysis(strokes, file_id)
-    
-    # Human dataset example
-    human_dir = "../human/json"
-    if os.path.exists(human_dir):
-        human_files = get_files_to_process("human", human_dir)
-        if human_files:
-            file_path, file_id = human_files[0]  # Get first file
-            with open(file_path) as f:
-                json_data = json.load(f)
-            strokes = preprocess_json_to_stroke_format(json_data, "human")
-            results["human"] = run_eval_analysis(strokes, file_id)
-    
-    # Random dataset example
-    random_dir = "../random/json"
-    if os.path.exists(random_dir):
-        random_files = get_files_to_process("random", random_dir)
-        if random_files:
-            file_path, file_id = random_files[0]  # Get first file
-            with open(file_path) as f:
-                json_data = json.load(f)
-            strokes = preprocess_json_to_stroke_format(json_data, "random")
-            results["random"] = run_eval_analysis(strokes, file_id)
-    
-    return results
+    return summary_stats
 
 if __name__ == "__main__":
-    # main() 
-    results = analyze_single_examples()
-    print(results)
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--all":
+        analyze_all_files()
+    else:
+        main()

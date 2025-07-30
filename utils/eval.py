@@ -154,21 +154,7 @@ def center_stroke(stroke):
 
 def compute_frechet_distance(s1, s2):
     """Compute discrete Fréchet distance between two strokes (2D curves)"""
-    # Make curves same length by interpolating the shorter one
-    if len(s1) > len(s2):
-        # Interpolate s2 to match s1 length
-        x = np.linspace(0, len(s2)-1, len(s1))
-        xp = np.arange(len(s2))
-        s2_interp = np.array([np.interp(x, xp, s2[:,i]) for i in range(s2.shape[1])]).T
-        return frdist(s1, s2_interp)
-    elif len(s2) > len(s1):
-        # Interpolate s1 to match s2 length
-        x = np.linspace(0, len(s1)-1, len(s2))
-        xp = np.arange(len(s1))
-        s1_interp = np.array([np.interp(x, xp, s1[:,i]) for i in range(s1.shape[1])]).T
-        return frdist(s1_interp, s2)
-    else:
-        return frdist(s1, s2)
+    return frdist(s1, s2)
 
 # MODIFIED FUNCTION: Now groups by color families instead of exact hex colors
 def analyze_spatial_correlation(strokes):
