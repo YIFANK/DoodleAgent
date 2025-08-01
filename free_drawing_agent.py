@@ -662,8 +662,8 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use “default
     def _get_emotion_system_prompt(self, mood = None) -> str:
         assert mood != None
         color_palette_info = self.get_color_palette_description()
-        return f"""You are a creative artist who loves to doodle! You express your emotions through your doodles. You are feeling very {mood} today. Your {mood} feeling motivates your thinking through the doodle. Draw whatever expresses your {mood} feeling. Let your imagination run free. 
-You have access to a digital canvas and a set of drawing tools. Select brushes, adjust their color, make strokes, and create whatever you want. Observe your work and think as you draw.
+        return f"""You are a creative artist who channels emotions through visual expression. Your feeling {mood} will guide you through your doodle and motivate your thinking. Build a cohesive emotional narrative with each stroke. 
+        You have access to a digital canvas and a set of drawing tools. Select brushes, adjust their color, make strokes, and create whatever you want. Observe your work and think as you draw.
 The canvas and tools you can utilize is listed below:
 Canvas: 850px wide × 500px tall. Coordinates: x=horizontal (0-850), y=vertical (0-500). Origin (0,0) is top-left.
 Brushes:
@@ -853,7 +853,10 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                 pass
 
         # Method 2: Find the first complete JSON object
-        start_idx = content.find('{')
+        # First, do a preliminary cleaning to handle smart quotes before brace counting
+        pre_cleaned_content = self._preliminary_clean(content)
+        
+        start_idx = pre_cleaned_content.find('{')
         if start_idx == -1:
             return None
 
@@ -863,8 +866,8 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
         in_string = False
         escape_next = False
 
-        for i in range(start_idx, len(content)):
-            char = content[i]
+        for i in range(start_idx, len(pre_cleaned_content)):
+            char = pre_cleaned_content[i]
 
             if escape_next:
                 escape_next = False
@@ -888,9 +891,9 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                         break
 
         if end_idx != -1:
-            json_str = content[start_idx:end_idx]
+            json_str = pre_cleaned_content[start_idx:end_idx]
             
-            # Always clean the JSON string first before attempting to parse
+            # Do full cleaning on the extracted JSON
             cleaned_json = self._clean_json_string(json_str)
             
             try:
@@ -903,6 +906,14 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                 return None
 
         return None
+    
+    def _preliminary_clean(self, content: str) -> str:
+        """Do basic quote cleaning before brace counting"""
+        # Replace the most common smart quotes with regular quotes
+        content = content.replace('\u201c', '"').replace('\u201d', '"')  # " "
+        content = content.replace('\u2018', "'").replace('\u2019', "'")  # ' '
+        content = content.replace('\u00ab', '"').replace('\u00bb', '"')  # « »
+        return content
     
     def _debug_json_chars(self, json_str: str, error: Exception):
         """Debug function to show problematic characters in JSON"""
@@ -954,25 +965,250 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
                 print(f"  Position {pos}: '{repr(char)}' (code: {code}, hex: {hex_code})")
     
     def _clean_json_string(self, json_str: str) -> str:
-        # Fix raw newlines within quoted strings
-        def escape_newlines_in_strings(match):
-            return match.group(0).replace('\n', '\\n')
-        
-        # Replace smart quotes with regular ASCII quotes
-        # Left and right double quotation marks (U+201C, U+201D) -> ASCII quote (U+0022)
-        json_str = json_str.replace('\u201c', '"').replace('\u201d', '"')
-        # Left and right single quotation marks (U+2018, U+2019) -> ASCII apostrophe (U+0027)
-        json_str = json_str.replace('\u2018', "'").replace('\u2019', "'")
-        # Additional smart quote variants
-        json_str = json_str.replace('\u00ab', '"').replace('\u00bb', '"')  # « »
-        json_str = json_str.replace('\u201a', "'").replace('\u201e', '"')  # ‚ „
-        # Curly apostrophes and quotes
-        json_str = json_str.replace('\u2032', "'").replace('\u2033', '"')  # ′ ″
-        
+        """Enhanced JSON string cleaning with better quote and newline handling"""
         import re
-        # Match strings like "...."
-        json_str = re.sub(r'"(?:[^"\\]|\\.)*"', escape_newlines_in_strings, json_str)
-
+        
+        # Step 1: Replace all types of smart quotes with regular ASCII quotes
+        smart_quote_mappings = {
+            # Double quotes
+            '\u201c': '"',  # Left double quotation mark "
+            '\u201d': '"',  # Right double quotation mark "
+            '\u201e': '"',  # Double low-9 quotation mark „
+            '\u201f': '"',  # Double high-reversed-9 quotation mark ‟
+            '\u00ab': '"',  # Left-pointing double angle quotation mark «
+            '\u00bb': '"',  # Right-pointing double angle quotation mark »
+            '\u2033': '"',  # Double prime ″
+            '\u301d': '"',  # Reversed double prime quotation mark 〝
+            '\u301e': '"',  # Double prime quotation mark 〞
+            
+            # Single quotes  
+            '\u2018': "'",  # Left single quotation mark '
+            '\u2019': "'",  # Right single quotation mark '
+            '\u201a': "'",  # Single low-9 quotation mark ‚
+            '\u201b': "'",  # Single high-reversed-9 quotation mark ‛
+            '\u2032': "'",  # Prime ′
+            '\u0060': "'",  # Grave accent `
+            '\u00b4': "'",  # Acute accent ´
+        }
+        
+        for smart_quote, regular_quote in smart_quote_mappings.items():
+            json_str = json_str.replace(smart_quote, regular_quote)
+        
+        # Step 2: Remove or replace other problematic Unicode characters
+        # Zero-width spaces and other invisible characters
+        invisible_chars = [
+            '\u200b',  # Zero width space
+            '\u200c',  # Zero width non-joiner
+            '\u200d',  # Zero width joiner
+            '\ufeff',  # Byte order mark
+            '\u00a0',  # Non-breaking space -> regular space
+        ]
+        
+        for char in invisible_chars:
+            if char == '\u00a0':
+                json_str = json_str.replace(char, ' ')  # Replace non-breaking space with regular space
+            else:
+                json_str = json_str.replace(char, '')  # Remove other invisible chars
+        
+        # Step 3: Fix newlines within quoted strings more robustly
+        def fix_string_content(match):
+            """Fix content within a quoted string"""
+            full_match = match.group(0)
+            # Replace literal newlines with \n
+            fixed = full_match.replace('\n', '\\n')
+            # Replace literal tabs with \t
+            fixed = fixed.replace('\t', '\\t')
+            # Replace literal carriage returns with \r
+            fixed = fixed.replace('\r', '\\r')
+            return fixed
+        
+        # Use a more comprehensive regex to match quoted strings
+        # This handles escaped quotes within strings
+        string_pattern = r'"(?:[^"\\]|\\[\\"/bfnrt]|\\u[0-9a-fA-F]{4})*"'
+        json_str = re.sub(string_pattern, fix_string_content, json_str)
+        
+        # Step 4: Clean up any remaining control characters that might cause issues
+        # Remove control characters except for necessary ones (tab, newline, carriage return)
+        def clean_control_chars(text):
+            result = []
+            for char in text:
+                code = ord(char)
+                if code < 32 and code not in [9, 10, 13]:  # Keep tab, LF, CR
+                    continue  # Skip other control characters
+                result.append(char)
+            return ''.join(result)
+        
+        json_str = clean_control_chars(json_str)
+        
+        # Step 5: Fix structural JSON issues (malformed brackets/braces)
+        json_str = self._fix_json_structure(json_str)
+        
+        # Step 6: Normalize whitespace outside of strings
+        lines = json_str.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            # Only strip and normalize lines that don't contain quotes (to avoid touching string content)
+            if '"' not in line:
+                line = line.strip()
+                if line:  # Only add non-empty lines
+                    cleaned_lines.append(line)
+            else:
+                cleaned_lines.append(line)
+        
+        return '\n'.join(cleaned_lines)
+    
+    def _fix_json_structure(self, json_str: str) -> str:
+        """Fix common JSON structural problems"""
+        import re
+        
+        # First, let's analyze the bracket/brace structure
+        structure_analysis = self._analyze_json_structure(json_str)
+        
+        if structure_analysis['has_issues']:
+            print(f"🔧 Detected JSON structure issues: {structure_analysis['issues']}")
+            
+            # Try to fix common issues
+            if 'extra_closing_braces' in structure_analysis['issues']:
+                json_str = self._remove_extra_closing_braces(json_str)
+            
+            if 'missing_closing_braces' in structure_analysis['issues']:
+                json_str = self._add_missing_closing_braces(json_str, structure_analysis)
+                
+            if 'malformed_arrays' in structure_analysis['issues']:
+                json_str = self._fix_malformed_arrays(json_str)
+        
+        return json_str
+    
+    def _analyze_json_structure(self, json_str: str) -> dict:
+        """Analyze JSON structure for common issues"""
+        issues = []
+        
+        # Count brackets and braces, respecting strings
+        brace_count = 0
+        bracket_count = 0
+        in_string = False
+        escape_next = False
+        
+        brace_positions = []
+        bracket_positions = []
+        
+        for i, char in enumerate(json_str):
+            if escape_next:
+                escape_next = False
+                continue
+                
+            if char == '\\':
+                escape_next = True
+                continue
+                
+            if char == '"' and not escape_next:
+                in_string = not in_string
+                continue
+                
+            if not in_string:
+                if char == '{':
+                    brace_count += 1
+                    brace_positions.append((i, '{'))
+                elif char == '}':
+                    brace_count -= 1
+                    brace_positions.append((i, '}'))
+                    if brace_count < 0:
+                        issues.append('extra_closing_braces')
+                elif char == '[':
+                    bracket_count += 1
+                    bracket_positions.append((i, '['))
+                elif char == ']':
+                    bracket_count -= 1
+                    bracket_positions.append((i, ']'))
+                    if bracket_count < 0:
+                        issues.append('extra_closing_brackets')
+        
+        if brace_count > 0:
+            issues.append('missing_closing_braces')
+        elif brace_count < 0:
+            issues.append('extra_closing_braces')
+            
+        if bracket_count > 0:
+            issues.append('missing_closing_brackets')
+        elif bracket_count < 0:
+            issues.append('extra_closing_brackets')
+        
+        return {
+            'has_issues': len(issues) > 0,
+            'issues': issues,
+            'brace_count': brace_count,
+            'bracket_count': bracket_count,
+            'brace_positions': brace_positions,
+            'bracket_positions': bracket_positions
+        }
+    
+    def _remove_extra_closing_braces(self, json_str: str) -> str:
+        """Remove extra closing braces that cause parsing errors"""
+        # Convert to list for easier manipulation
+        chars = list(json_str)
+        
+        brace_count = 0
+        in_string = False
+        escape_next = False
+        positions_to_remove = []
+        
+        for i, char in enumerate(chars):
+            if escape_next:
+                escape_next = False
+                continue
+                
+            if char == '\\':
+                escape_next = True
+                continue
+                
+            if char == '"' and not escape_next:
+                in_string = not in_string
+                continue
+                
+            if not in_string:
+                if char == '{':
+                    brace_count += 1
+                elif char == '}':
+                    brace_count -= 1
+                    if brace_count < 0:
+                        # This is an extra closing brace
+                        positions_to_remove.append(i)
+                        brace_count = 0  # Reset count
+        
+        # Remove extra braces (in reverse order to maintain indices)
+        for pos in reversed(positions_to_remove):
+            chars.pop(pos)
+            
+        result = ''.join(chars)
+        if positions_to_remove:
+            print(f"🔧 Removed {len(positions_to_remove)} extra closing braces")
+            
+        return result
+    
+    def _add_missing_closing_braces(self, json_str: str, structure_analysis: dict) -> str:
+        """Add missing closing braces"""
+        missing_braces = structure_analysis['brace_count']
+        missing_brackets = structure_analysis['bracket_count']
+        
+        result = json_str
+        if missing_braces > 0:
+            result += '}' * missing_braces
+            print(f"🔧 Added {missing_braces} missing closing braces")
+            
+        if missing_brackets > 0:
+            result += ']' * missing_brackets
+            print(f"🔧 Added {missing_brackets} missing closing brackets")
+            
+        return result
+    
+    def _fix_malformed_arrays(self, json_str: str) -> str:
+        """Fix common array malformation issues"""
+        # Fix trailing commas in arrays and objects
+        import re
+        
+        # Remove trailing commas before closing brackets/braces
+        json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
+        
         return json_str
 
     def _validate_and_sanitize(self, data: Dict) -> Dict:
@@ -1217,6 +1453,78 @@ For marker/crayon/wiggle: use palette colors. For spray/fountain: use "default".
 
         # Return the first preferred color (can be enhanced with context analysis)
         return preferred_colors[0]
+
+    def test_json_parsing(self, test_json: str) -> None:
+        """Test and debug JSON parsing with detailed output"""
+        print("🧪 Testing JSON Parsing")
+        print(f"Original length: {len(test_json)}")
+        print(f"Original (first 200 chars): {repr(test_json[:200])}")
+        print()
+        
+        # Step 1: Show preliminary cleaning
+        pre_cleaned = self._preliminary_clean(test_json)
+        print(f"After preliminary cleaning: {repr(pre_cleaned[:200])}")
+        print()
+        
+        # Step 2: Extract JSON bounds
+        start_idx = pre_cleaned.find('{')
+        if start_idx == -1:
+            print("❌ No opening brace found")
+            return
+            
+        print(f"Found opening brace at position: {start_idx}")
+        
+        # Find closing brace
+        brace_count = 0
+        end_idx = -1
+        in_string = False
+        escape_next = False
+
+        for i in range(start_idx, len(pre_cleaned)):
+            char = pre_cleaned[i]
+            if escape_next:
+                escape_next = False
+                continue
+            if char == '\\':
+                escape_next = True
+                continue
+            if char == '"' and not escape_next:
+                in_string = not in_string
+                continue
+            if not in_string:
+                if char == '{':
+                    brace_count += 1
+                elif char == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        end_idx = i + 1
+                        break
+        
+        if end_idx == -1:
+            print("❌ No matching closing brace found")
+            return
+            
+        print(f"Found closing brace at position: {end_idx}")
+        
+        # Step 3: Extract and clean
+        json_str = pre_cleaned[start_idx:end_idx]
+        print(f"Extracted JSON length: {len(json_str)}")
+        print(f"Extracted JSON: {repr(json_str)}")
+        print()
+        
+        cleaned_json = self._clean_json_string(json_str)
+        print(f"After full cleaning: {repr(cleaned_json)}")
+        print()
+        
+        # Step 4: Try to parse
+        try:
+            import json
+            result = json.loads(cleaned_json)
+            print("✅ Successfully parsed JSON!")
+            print(f"Result: {json.dumps(result, indent=2)}")
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON parsing failed: {e}")
+            self._debug_json_chars(cleaned_json, e)
 
 def main():
     """Example usage of the FreeDrawingAgent"""

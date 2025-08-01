@@ -45,8 +45,8 @@ def main():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     canvas_url = f"file://{current_dir}/drawing_canvas.html"
 
-    # Initialize the automated drawing canvas with video capture enabled
-    canvas = AutomatedDrawingCanvas(api_key=api_key, canvas_url=canvas_url, enable_video_capture=True, capture_fps=30, model_type=model_type, verbose=True)
+    # Initialize the automated drawing canvas with video capture disabled
+    canvas = AutomatedDrawingCanvas(api_key=api_key, canvas_url=canvas_url, enable_video_capture=False, capture_fps=30, model_type=model_type, verbose=True)
 
     try:
         print("🎨 Starting Free Drawing Canvas Demo")
@@ -114,13 +114,8 @@ def main():
                 os.makedirs(repeat_output_dir, exist_ok=True)
                 print(f"📁 Created output directory: {repeat_output_dir}")
 
-                # Clear canvas for new run and ensure video capture is stopped
+                # Clear canvas for new run
                 if repeat_run > 0:
-                    # Ensure any previous video capture is stopped
-                    try:
-                        canvas.bridge.stop_video_capture()
-                    except:
-                        pass  # Ignore if no video was running
                     # Small delay to ensure proper cleanup
                     import time
                     time.sleep(0.5)
@@ -177,16 +172,8 @@ def main():
                 custom_output_dir = f"../output/custom/{repeat_ts}"
                 os.makedirs(custom_output_dir, exist_ok=True)
                 
-                print("🎥 Video recording enabled - capturing the entire custom session!")
-                video_output = f"{custom_output_dir}/custom_session_{repeat_ts}_repeat_{repeat_run + 1}.mp4"
-                
-                # Ensure video capture is stopped before starting new one
-                try:
-                    canvas.bridge.stop_video_capture()
-                except:
-                    pass  # Ignore if no video was running
-                    
-                canvas.bridge.start_video_capture(video_output)
+                # Video recording disabled for faster runs
+                # video_output = f"{custom_output_dir}/custom_session_{repeat_ts}_repeat_{repeat_run + 1}.mp4"
 
                 try:
                     # Run the creative session and get the instructions
@@ -194,23 +181,19 @@ def main():
 
                     # Save final canvas for custom demo
                     canvas.bridge.capture_canvas(f"{custom_output_dir}/{repeat_ts}.png")
-                    
+                    canvas.bridge.capture_canvas(f"../output/custom/img/custom_{repeat_ts}.png")
                     # Export session logs as JSON to the custom output directory
                     print("📝 Saving session logs as JSON...")
                     session_name = f"custom_demo_{repeat_ts}_repeat_{repeat_run + 1}"
                     canvas.save_complete_session_data(custom_output_dir, session_name, instructions)
-                    
+                    canvas.save_complete_session_data(f"../output/custom/json", session_name, instructions)
                     if repeat_run == num_repeats - 1:
                         print(f"\n🎉 Custom session completed!")
                         print(f"Final artwork saved as: {custom_output_dir}/{repeat_ts}.png")
-                        print(f"🎬 Video saved as: {video_output}")
 
                 finally:
-                    # Stop video capture with error handling
-                    try:
-                        canvas.bridge.stop_video_capture()
-                    except Exception as e:
-                        print(f"Warning: Error stopping video capture: {e}")
+                    # Video capture disabled - no cleanup needed
+                    pass
                 
                 # Also close and reset the session for the next repeat
                 if repeat_run < num_repeats - 1:
@@ -235,20 +218,11 @@ def main():
 
                 # Setup standardized output directory for mood demo (same format as custom demo)
                 repeat_ts = repeat_timestamp if num_repeats > 1 else timestamp
-                mood_output_dir = f"../output/custom/{repeat_ts}"
+                mood_output_dir = f"../output/mood/{repeat_ts}"
                 os.makedirs(mood_output_dir, exist_ok=True)
 
-                print("🎥 Video recording enabled - capturing the entire mood-based session!")
-                # Start video capture for mood-based session  
-                video_output = f"{mood_output_dir}/mood_{mood}_{repeat_ts}_repeat_{repeat_run + 1}.mp4"
-                
-                # Ensure video capture is stopped before starting new one
-                try:
-                    canvas.bridge.stop_video_capture()
-                except:
-                    pass  # Ignore if no video was running
-                    
-                canvas.bridge.start_video_capture(video_output)
+                # Video recording disabled for faster runs
+                # video_output = f"{mood_output_dir}/mood_{mood}_{repeat_ts}_repeat_{repeat_run + 1}.mp4"
 
                 # Collect instructions for JSON logging
                 mood_instructions = []
@@ -274,24 +248,22 @@ def main():
                             print(f"   {i+1}. {stroke['x']}, {stroke['y']}")
 
                     # Save final mood-based artwork to standardized directory
+                    os.makedirs(f"../mood/{mood}/img", exist_ok=True)
                     canvas.bridge.capture_canvas(f"{mood_output_dir}/mood_{mood}_{repeat_ts}.png")
-                    
+                    canvas.bridge.capture_canvas(f"../mood/{mood}/img/mood_{repeat_ts}.png")
+                    os.makedirs(f"../mood/{mood}/json", exist_ok=True)
                     # Save JSON logs for mood-based session to standardized directory
                     print("📝 Saving mood-based session logs as JSON...")
                     session_name = f"mood_{mood}_{repeat_ts}_repeat_{repeat_run + 1}"
                     canvas.save_complete_session_data(mood_output_dir, session_name, mood_instructions)
-                    
+                    canvas.save_complete_session_data(f"../mood/{mood}/json", session_name, mood_instructions)
                     if repeat_run == num_repeats - 1:
                         print(f"\n🎉 Mood-based session completed!")
                         print(f"Final artwork saved as: {mood_output_dir}/mood_{mood}_{repeat_ts}.png")
-                        print(f"🎬 Video saved as: {video_output}")
 
                 finally:
-                    # Stop video capture with error handling
-                    try:
-                        canvas.bridge.stop_video_capture()
-                    except Exception as e:
-                        print(f"Warning: Error stopping video capture: {e}")
+                    # Video capture disabled - no cleanup needed
+                    pass
 
                 # Reset session for next repeat
                 if repeat_run < num_repeats - 1:
@@ -311,19 +283,10 @@ def main():
 
                     print(f"\n🎯 Running Abstract Demo with {num_iterations} strokes, {num_repeats} time(s)...")
 
-                print("🎥 Video recording enabled - capturing the entire abstract session!")
+                # Video recording disabled for faster runs
                 # Get current timestamp for this repeat run
                 current_ts = repeat_timestamp if num_repeats > 1 else timestamp
-                # Start video capture for abstract session
-                video_output = f"{repeat_output_dir}/abstract_session_{current_ts}_repeat_{repeat_run + 1}.mp4"
-                
-                # Ensure video capture is stopped before starting new one
-                try:
-                    canvas.bridge.stop_video_capture()
-                except:
-                    pass  # Ignore if no video was running
-                    
-                canvas.bridge.start_video_capture(video_output)
+                # video_output = f"{repeat_output_dir}/abstract_session_{current_ts}_repeat_{repeat_run + 1}.mp4"
 
                 # Collect instructions for JSON logging
                 abstract_instructions = []
@@ -359,14 +322,10 @@ def main():
                     if repeat_run == num_repeats - 1:
                         print(f"\n🎉 Abstract session completed!")
                         print(f"Final artwork saved as: {repeat_output_dir}/abstract_final.png")
-                        print(f"🎬 Video saved as: {video_output}")
 
                 finally:
-                    # Stop video capture with error handling
-                    try:
-                        canvas.bridge.stop_video_capture()
-                    except Exception as e:
-                        print(f"Warning: Error stopping video capture: {e}")
+                    # Video capture disabled - no cleanup needed
+                    pass
 
                 # Reset session for next repeat
                 if repeat_run < num_repeats - 1:
@@ -388,16 +347,8 @@ def main():
 
                 # Get current timestamp for this repeat run
                 current_ts = repeat_timestamp if num_repeats > 1 else timestamp
-                # Start video capture for random strokes session
-                video_output = f"{repeat_output_dir}/random_strokes_{current_ts}_repeat_{repeat_run + 1}.mp4"
-                
-                # Ensure video capture is stopped before starting new one
-                try:
-                    canvas.bridge.stop_video_capture()
-                except:
-                    pass  # Ignore if no video was running
-                    
-                canvas.bridge.start_video_capture(video_output)
+                # Video recording disabled for faster runs
+                # video_output = f"{repeat_output_dir}/random_strokes_{current_ts}_repeat_{repeat_run + 1}.mp4"
 
                 # Collect instructions for JSON logging
                 random_instructions = []
@@ -418,7 +369,7 @@ def main():
                         y_points = [start_y]
 
                         # Circle radius for next point sampling
-                        radius = 100
+                        radius = 200
 
                         # Generate subsequent points
                         for _ in range(stroke_length - 1):
@@ -467,25 +418,20 @@ def main():
                         random_instructions.append(instruction)
 
                         print(f"🖌️ Drew {stroke_length}-point stroke with {brush} brush in {color}")
-
                     # Save final random strokes artwork
-                    canvas.bridge.capture_canvas(f"{repeat_output_dir}/random_strokes_final.png")
+                    canvas.bridge.capture_canvas(f"../random/img/random_{current_ts}.png")
                     
                     # Save JSON logs for random strokes session
                     print("📝 Saving random strokes session logs as JSON...")
                     session_name = f"random_strokes_{current_ts}_repeat_{repeat_run + 1}"
-                    canvas.save_complete_session_data(repeat_output_dir, session_name, random_instructions)
+                    canvas.save_complete_session_data(f"../random/json", session_name, random_instructions)
                     
                     if repeat_run == num_repeats - 1:
                         print(f"\n🎉 Random strokes session completed!")
-                        print(f"🎬 Video saved as: {video_output}")
 
                 finally:
-                    # Stop video capture with error handling
-                    try:
-                        canvas.bridge.stop_video_capture()
-                    except Exception as e:
-                        print(f"Warning: Error stopping video capture: {e}")
+                    # Video capture disabled - no cleanup needed
+                    pass
 
                 # Reset session for next repeat
                 if repeat_run < num_repeats - 1:
@@ -507,12 +453,6 @@ def main():
         traceback.print_exc()
 
     finally:
-        # Ensure video capture is stopped before closing
-        try:
-            canvas.bridge.stop_video_capture()
-        except:
-            pass  # Ignore if no video was running
-        
         # Ensure final session is properly closed
         try:
             canvas.agent.close_session_logs()
