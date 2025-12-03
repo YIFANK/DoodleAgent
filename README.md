@@ -1,22 +1,37 @@
-# Free Drawing Agent for drawing_canvas.html
+# Doodle Agent: Exploring Freeform Visual Generation with Multimodal LLMs
 
-This system provides an AI-powered creative drawing agent that works specifically with the `drawing_canvas.html` interface. The agent analyzes the current canvas state and freely decides what to draw next, outputting JSON instructions in a standardized format.
+[![Paper](https://img.shields.io/badge/Paper-OpenReview-blue)](https://openreview.net/pdf?id=oT8pxhfPzT)
+[![Website](https://img.shields.io/badge/Website-Live-green)](https://yifank.github.io/doodle-agent/)
+
+This repository contains the code for **Doodle Agent**, an AI-powered creative drawing system that explores how large multimodal language models engage in open-ended visual creation through natural doodling. The agent iteratively selects brushes, colors, and coordinates to create freeform drawings without explicit instructions.
+
+**Paper**: *Doodle Agent: Exploring Freeform Visual Generation with Multimodal LLMs*
+**Authors**: Dingning Cao, Yifan Kang, Antonio Torralba, Yael Vinker
+**Venue**: ICCV 2025 Workshop on AI4VA
 
 ## 🎨 Overview
 
-The Free Drawing Agent consists of three main components:
+Doodle Agent consists of three main components:
 
-1. **FreeDrawingAgent** (`free_drawing_agent.py`) - The AI artist that analyzes canvas images and generates drawing instructions
-2. **DrawingCanvasBridge** (`drawing_canvas_bridge.py`) - The interface that executes drawing instructions on the HTML canvas
-3. **Demo Script** (`demo_free_canvas.py`) - Example usage and interactive demos
+1. **FreeDrawingAgent** ([free_drawing_agent.py](free_drawing_agent.py)) - The AI artist that analyzes canvas images and generates drawing instructions
+2. **DrawingCanvasBridge** ([drawing_canvas_bridge.py](drawing_canvas_bridge.py)) - The interface that executes drawing instructions on the HTML canvas
+3. **Demo Script** ([demo_free_canvas.py](demo_free_canvas.py)) - Example usage and interactive demos
+
+The system uses a web-based canvas built in p5.js with five brush types (marker, crayon, wiggle, spray, fountain) and a palette of 36 colors. At each step, the multimodal LLM (Claude 3.5 Sonnet or GPT-4o) receives the current canvas and outputs JSON commands specifying brush, color, and stroke coordinates.
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Installation
 
-1. **Environment Setup**:
+1. **Clone the repository**:
    ```bash
-   pip install anthropic selenium pillow python-dotenv
+   git clone https://github.com/YIFANK/DoodleAgent.git
+   cd DoodleAgent
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
    ```
 
 2. **API Key Configuration**:
@@ -100,7 +115,7 @@ Result:   x=[10, 20, 25, 30, 32, 34, 36, 38, 40]
 
 ## 🖌️ Available Brushes
 
-The agent can use any of these brushes from `drawing_canvas.html`:
+The agent can use any of these brushes from [wisteria.html](wisteria.html):
 
 - **pen**: Clean, precise pen lines (2px width)
 - **marker**: Broad semi-transparent marker strokes (50px diameter)
@@ -193,14 +208,47 @@ To support additional brushes:
 
 The current canvas is 850×500 pixels. Coordinates are automatically clamped to these bounds.
 
+## 📁 Project Structure
+
+```
+DoodleAgent/
+├── free_drawing_agent.py       # Main agent implementation
+├── drawing_canvas_bridge.py    # Canvas interface bridge
+├── demo_free_canvas.py         # Demo script
+├── wisteria.html               # Main drawing interface
+├── requirements.txt            # Core dependencies
+├── scripts/                    # Analysis and utility scripts
+│   ├── analyze_mood.py
+│   ├── unified_analysis.py
+│   ├── run_comprehensive_analysis.py
+│   └── stroke_data_processor.py
+├── utils/                      # Evaluation utilities
+└── tests/                      # Test files
+```
+
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-1. **Canvas not found**: Ensure `drawing_canvas.html` is in the same directory
+1. **Canvas not found**: Ensure [wisteria.html](wisteria.html) is in the same directory
 2. **ChromeDriver issues**: Make sure ChromeDriver is installed and in PATH
 3. **API errors**: Verify your Anthropic API key is correct and has credits
 4. **Stroke execution fails**: Check that coordinates are within canvas bounds (0-850, 0-500)
+
+## 📊 Analysis Scripts
+
+The [scripts/](scripts/) directory contains tools for analyzing drawing data:
+
+- **analyze_mood.py**: Analyze color usage across different moods
+- **unified_analysis.py**: Evaluate JSON files from both custom and human datasets
+- **run_comprehensive_analysis.py**: Run comprehensive analysis for all datasets
+- **stroke_data_processor.py**: Process stroke data from the canvas interface
+
+Run analysis scripts from the project root:
+```bash
+python scripts/unified_analysis.py --dataset all
+python scripts/analyze_mood.py
+```
 
 ### Debug Mode
 
@@ -270,6 +318,20 @@ canvas.creative_session(num_iterations)
 canvas.close()
 ```
 
+## 📖 Citation
+
+If you use this code in your research, please cite our paper:
+
+```bibtex
+@inproceedings{cao2025doodleagent,
+  title     = {Doodle Agent: Exploring Freeform Visual Generation with Multimodal LLMs},
+  author    = {Cao, Dingning and Kang, Yifan and Torralba, Antonio and Vinker, Yael},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops (ICCVW)},
+  year      = {2025},
+  note      = {AI4VA Workshop},
+}
+```
+
 ## 🤝 Contributing
 
 To contribute to this project:
@@ -281,6 +343,16 @@ To contribute to this project:
 
 Make sure to follow the existing code style and add appropriate documentation.
 
+## 📜 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- Website template based on [Nerfies](https://nerfies.github.io/)
+- Drawing interface built with [p5.js](https://p5js.org/)
+- Powered by [Anthropic Claude](https://www.anthropic.com/) and OpenAI GPT-4
+
 ---
 
-**Happy Drawing! 🎨✨** 
+**Happy Doodling! 🎨✨** 

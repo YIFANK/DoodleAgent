@@ -74,3 +74,16 @@ illustrations/*.json
 
 *.mp4
 *.png
+
+# Project output directories
+mood/
+static/
+temp_frames/
+tests/fountain_shape_test_results/
+
+# Output files
+strokes.json
+drawing_*.png
+canvas_*.png
+mood_*.png
+mood_*.mp4
