@@ -221,9 +221,27 @@ DoodleAgent/
 │   ├── analyze_mood.py
 │   ├── unified_analysis.py
 │   ├── run_comprehensive_analysis.py
-│   └── stroke_data_processor.py
-├── utils/                      # Evaluation utilities
-└── tests/                      # Test files
+│   ├── stroke_data_processor.py
+│   ├── color_grouping.py
+│   ├── log_viewer.py
+│   ├── demo_video_generation_lite.py
+│   └── explorer_demo.py
+├── tests/                      # Test files
+│   ├── brush_step_test.py
+│   ├── wiggle_brush_shape_test.py
+│   ├── simple_test.py
+│   ├── test_custom_outputs.py
+│   ├── test_drawing_bridge.py
+│   └── test_human_outputs.py
+├── examples/                   # Example files
+│   ├── env_example.txt
+│   ├── humandoodle_test_10.json
+│   └── strokes.json
+├── docs/                       # Additional documentation
+│   ├── README_EmotionDrawing.md
+│   ├── VIDEO_GENERATION_README.md
+│   └── human_stroke_collector_README.md
+└── utils/                      # Evaluation utilities
 ```
 
 ## 🐛 Troubleshooting
